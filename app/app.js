@@ -26,20 +26,28 @@ const state = {
   deviceId: store.get('deviceId', null),
   myStats: store.get('myStats', {}),
   remoteDoc: store.get('remoteDoc', { version: 1, devices: {} }),
-  settings: Object.assign({ token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20 }, store.get('settings', {})),
+  settings: Object.assign({ syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20 }, store.get('settings', {})),
   session: null,
 };
 
-if (!state.deviceId) {
-  state.deviceId = Math.random().toString(36).slice(2, 10);
+// Ids must match the sync server's pattern; older random ids could rarely be too short.
+if (!/^[a-z0-9]{4,32}$/.test(state.deviceId || '')) {
+  state.deviceId = randomString('abcdefghijklmnopqrstuvwxyz0123456789', 10);
   store.set('deviceId', state.deviceId);
 }
+// Before sync codes existed, a saved token meant Gist sync.
+if (!state.settings.syncMode && state.settings.token) state.settings.syncMode = 'gist';
 if (!state.settings.deviceName) {
   state.settings.deviceName = /iPad/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent))
     ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : 'Browser';
 }
 
 function saveSettings() { store.set('settings', state.settings); }
+
+function randomString(alphabet, length) {
+  const bytes = crypto.getRandomValues(new Uint8Array(length));
+  return [...bytes].map(b => alphabet[b % alphabet.length]).join('');
+}
 
 function allStats() {
   const devices = Object.assign({}, state.remoteDoc.devices);
@@ -52,17 +60,29 @@ function pool() {
   return state.questions.filter(q => (!section || q.section === section) && (!topic || q.topic === topic));
 }
 
-// ---------- sync via a private GitHub Gist ----------
+// ---------- sync ----------
+// Two backends share one document shape, { devices: { [deviceId]: { name, updated, stats } } },
+// in which each device writes only its own entry:
+//   'code': this site's sync API, keyed by a random sync code (no account needed)
+//   'gist': a private GitHub Gist in the user's own account
 
-const sync = {
-  timer: null,
-  busy: false,
-  status(kind, msg) {
-    const dot = document.getElementById('sync-dot');
-    dot.className = 'sync-dot ' + (kind || '');
-    dot.title = msg || '';
-    sync.lastMessage = msg || '';
-  },
+// Crockford base32: no I, L, O or U, so codes are easy to read and type.
+const CODE_ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+
+function newSyncCode() {
+  return randomString(CODE_ALPHABET, 12);
+}
+
+function formatCode(code) {
+  return code.match(/.{1,4}/g).join('-');
+}
+
+function normaliseCode(input) {
+  const code = input.toUpperCase().replace(/[\s-]/g, '').replace(/O/g, '0').replace(/[IL]/g, '1');
+  return /^[0-9A-HJKMNP-TV-Z]{12}$/.test(code) ? code : null;
+}
+
+const gist = {
   async api(path, opts) {
     const res = await fetch('https://api.github.com' + path, Object.assign({}, opts, {
       headers: {
@@ -82,18 +102,18 @@ const sync = {
     }
     return res.json();
   },
-  async findOrCreateGist() {
+  async findOrCreate() {
     if (state.settings.gistId) return state.settings.gistId;
     for (let page = 1; page <= 10; page++) {
-      const gists = await sync.api('/gists?per_page=100&page=' + page);
+      const gists = await gist.api('/gists?per_page=100&page=' + page);
       const hit = gists.find(g => g.files && g.files[STATS_FILE]);
       if (hit) { state.settings.gistId = hit.id; saveSettings(); return hit.id; }
       if (gists.length < 100) break;
     }
-    const created = await sync.api('/gists', {
+    const created = await gist.api('/gists', {
       method: 'POST',
       body: JSON.stringify({
-        description: 'Taiwan car written exam practice stats',
+        description: 'Car written exam practice stats',
         public: false,
         files: { [STATS_FILE]: { content: JSON.stringify({ version: 1, devices: {} }) } },
       }),
@@ -102,25 +122,63 @@ const sync = {
     saveSettings();
     return created.id;
   },
+  async push(entry) {
+    const id = await gist.findOrCreate();
+    const data = await gist.api('/gists/' + id);
+    const file = data.files[STATS_FILE];
+    let text = file ? file.content : '';
+    if (file && file.truncated) text = await (await fetch(file.raw_url, { cache: 'no-store' })).text();
+    let doc;
+    try { doc = JSON.parse(text); } catch (e) { doc = null; }
+    if (!doc || typeof doc.devices !== 'object') doc = { version: 1, devices: {} };
+    doc.devices[state.deviceId] = entry;
+    await gist.api('/gists/' + id, {
+      method: 'PATCH',
+      body: JSON.stringify({ files: { [STATS_FILE]: { content: JSON.stringify(doc) } } }),
+    });
+    return doc;
+  },
+};
+
+const codeSync = {
+  async push(entry) {
+    const res = await fetch('api/sync/' + state.settings.syncCode + '/' + state.deviceId, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: entry.name, stats: entry.stats }),
+      cache: 'no-store',
+    });
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(res.status + (body.error ? ': ' + body.error : ''));
+    return { version: 1, devices: body.devices || {} };
+  },
+};
+
+const sync = {
+  timer: null,
+  busy: false,
+  lastMessage: '',
+  status(kind, msg) {
+    const dot = document.getElementById('sync-dot');
+    dot.className = 'sync-dot ' + (kind || '');
+    dot.title = msg || '';
+    sync.lastMessage = msg || '';
+  },
+  backend() {
+    const { syncMode, syncCode, token } = state.settings;
+    if (syncMode === 'code' && syncCode) return codeSync;
+    if (syncMode === 'gist' && token) return gist;
+    return null;
+  },
   async run() {
-    if (!state.settings.token || sync.busy || !navigator.onLine) return;
+    const backend = sync.backend();
+    if (!backend || sync.busy || !navigator.onLine) return;
     sync.busy = true;
     sync.status('busy', 'Syncing…');
     try {
-      const id = await sync.findOrCreateGist();
-      const gist = await sync.api('/gists/' + id);
-      const file = gist.files[STATS_FILE];
-      let text = file ? file.content : '';
-      if (file && file.truncated) text = await (await fetch(file.raw_url, { cache: 'no-store' })).text();
-      let doc;
-      try { doc = JSON.parse(text); } catch (e) { doc = null; }
-      if (!doc || typeof doc.devices !== 'object') doc = { version: 1, devices: {} };
-      // Each device owns only its own entry, so concurrent devices never overwrite each other's answers.
-      doc.devices[state.deviceId] = { name: state.settings.deviceName, updated: Date.now(), stats: state.myStats };
-      await sync.api('/gists/' + id, {
-        method: 'PATCH',
-        body: JSON.stringify({ files: { [STATS_FILE]: { content: JSON.stringify(doc) } } }),
-      });
+      const entry = { name: state.settings.deviceName, updated: Date.now(), stats: state.myStats };
+      const doc = await backend.push(entry);
+      if (backend !== sync.backend()) return; // settings changed while syncing
       state.remoteDoc = doc;
       store.set('remoteDoc', doc);
       store.set('lastSync', Date.now());
@@ -135,6 +193,14 @@ const sync = {
   soon() {
     clearTimeout(sync.timer);
     sync.timer = setTimeout(sync.run, 4000);
+  },
+  // Switch backend: the other devices' stats come from the new backend on the next sync.
+  configure(changes) {
+    Object.assign(state.settings, changes);
+    saveSettings();
+    state.remoteDoc = { version: 1, devices: {} };
+    store.set('remoteDoc', state.remoteDoc);
+    sync.status('', '');
   },
 };
 
@@ -235,7 +301,7 @@ function homeView() {
       }, h('option', { value: '' }, 'All topics'),
       topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, c))),
       h('p', { class: 'muted' }, 'Section and topic apply to practice modes; the mock exam always uses the whole bank.')),
-    !state.settings.token && h('div', { class: 'card' },
+    !sync.backend() && h('div', { class: 'card' },
       h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between iPhone and iPad.')),
   );
 }
@@ -357,40 +423,45 @@ function tokenProblem(t) {
 
 function settingsView() {
   state.view = 'settings';
-  const devices = Object.entries(state.remoteDoc.devices || {});
-  // A plain text field so iOS does not offer to autofill a saved password, and the pasted token can be checked by eye.
-  const token = h('input', {
-    type: 'text', id: 'token', value: state.settings.token, placeholder: 'github_pat_…',
-    autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', class: 'mono',
+  const mode = state.settings.syncMode;
+  const status = h('p', { class: 'muted', id: 'sync-status' }, sync.lastMessage || '');
+  // Sync, then redraw so the status and device list reflect the result.
+  const syncNow = async () => {
+    status.textContent = 'Syncing…';
+    await sync.run();
+    if (state.view === 'settings') settingsView();
+  };
+  const name = h('input', {
+    type: 'text', id: 'dname', value: state.settings.deviceName, maxlength: 40,
+    onchange: e => { state.settings.deviceName = e.target.value.trim() || state.settings.deviceName; saveSettings(); sync.soon(); },
   });
-  const name = h('input', { type: 'text', id: 'dname', value: state.settings.deviceName });
-  const status = h('p', { class: 'muted' }, sync.lastMessage || '');
+  const devices = Object.entries(state.remoteDoc.devices || {});
+
+  const modeSelect = h('select', {
+    id: 'sync-mode',
+    onchange: e => {
+      if (state.settings.syncMode === 'code' && state.settings.syncCode && e.target.value !== 'code'
+        && !confirm('Stop using sync code ' + formatCode(state.settings.syncCode) + ' on this device? Write it down if you want to link again later.')) {
+        e.target.value = state.settings.syncMode;
+        return;
+      }
+      sync.configure({ syncMode: e.target.value });
+      settingsView();
+    },
+  },
+  h('option', { value: '', selected: !mode }, 'Off: stats stay on this device'),
+  h('option', { value: 'code', selected: mode === 'code' }, 'Sync code: no account needed'),
+  h('option', { value: 'gist', selected: mode === 'gist' }, 'GitHub Gist: stored in your GitHub account'));
 
   render(
     h('div', { class: 'card' },
       h('h2', {}, 'Sync between devices'),
-      h('p', { class: 'muted' },
-        'Stats are stored in a private GitHub Gist. Create a fine-grained token at github.com/settings/personal-access-tokens with only "Gists: Read and write" permission, and paste the same token on each device.'),
-      h('label', { for: 'token' }, 'GitHub token'), token,
-      h('label', { for: 'dname' }, 'This device name'), name,
-      h('div', { class: 'actions' },
-        h('button', {
-          class: 'btn primary',
-          onclick: async () => {
-            const value = token.value.replace(/\s+/g, '');
-            const changed = value !== state.settings.token;
-            state.settings.token = value;
-            state.settings.deviceName = name.value.trim() || state.settings.deviceName;
-            if (changed) state.settings.gistId = '';
-            saveSettings();
-            status.textContent = 'Syncing…';
-            await sync.run();
-            const problem = tokenProblem(value);
-            status.textContent = sync.lastMessage + (problem && /failed/.test(sync.lastMessage) ? ' ' + problem : '');
-          },
-        }, 'Save & sync now')),
-      status,
-      devices.length > 0 && h('p', { class: 'muted' }, 'Devices: ' + devices.map(([id, d]) =>
+      h('label', { for: 'sync-mode' }, 'Sync method'), modeSelect,
+      mode === 'code' && codeSettings(status, syncNow),
+      mode === 'gist' && gistSettings(),
+      mode && [h('label', { for: 'dname' }, 'This device name'), name],
+      mode && status,
+      mode && devices.length > 0 && h('p', { class: 'muted' }, 'Devices: ' + devices.map(([id, d]) =>
         (d.name || id) + (id === state.deviceId ? ' (this)' : '') + ' – ' + Object.keys(d.stats || {}).length + ' answered').join(', '))),
     h('div', { class: 'card' },
       h('h2', {}, 'Data'),
@@ -406,6 +477,79 @@ function settingsView() {
             homeView();
           },
         }, 'Reset this device'))));
+}
+
+function codeSettings(status, syncNow) {
+  const code = state.settings.syncCode;
+  if (code) {
+    const pretty = formatCode(code);
+    const shareText = 'Car Exam sync code: ' + pretty + '\nOpen ' + location.origin + location.pathname + ' → ⚙️ → Sync code → Use an existing code.';
+    return h('div', {},
+      h('p', { class: 'muted' }, 'Enter this code on your other devices. Anyone with the code can see and change these stats, so keep it private.'),
+      h('div', { class: 'sync-code', id: 'sync-code' }, pretty),
+      h('div', { class: 'actions' },
+        h('button', {
+          class: 'btn',
+          onclick: async e => {
+            try { await navigator.clipboard.writeText(pretty); e.target.textContent = 'Copied'; } catch (err) { /* clipboard unavailable */ }
+          },
+        }, 'Copy'),
+        navigator.share && h('button', {
+          class: 'btn',
+          onclick: () => navigator.share({ text: shareText }).catch(() => {}),
+        }, 'Share'),
+        h('button', { class: 'btn primary', onclick: syncNow }, 'Sync now')));
+  }
+  const input = h('input', {
+    type: 'text', id: 'code-input', placeholder: 'XXXX-XXXX-XXXX', class: 'mono',
+    autocomplete: 'off', autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false',
+  });
+  return h('div', {},
+    h('p', { class: 'muted' }, 'First device: create a code. Other devices: enter the same code.'),
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'btn primary',
+        onclick: async () => {
+          sync.configure({ syncCode: newSyncCode() });
+          await syncNow();
+        },
+      }, 'Create a new code')),
+    h('label', { for: 'code-input' }, 'Use an existing code'),
+    input,
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'btn',
+        onclick: async () => {
+          const value = normaliseCode(input.value);
+          if (!value) { status.textContent = 'That does not look like a sync code: it has 12 letters and digits, like ABCD-EFGH-JKMN.'; return; }
+          sync.configure({ syncCode: value });
+          await syncNow();
+        },
+      }, 'Link this device')));
+}
+
+function gistSettings() {
+  // A plain text field so iOS does not offer to autofill a saved password, and the pasted token can be checked by eye.
+  const token = h('input', {
+    type: 'text', id: 'token', value: state.settings.token, placeholder: 'github_pat_…',
+    autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', class: 'mono',
+  });
+  return h('div', {},
+    h('p', { class: 'muted' },
+      'Stats are stored in a private GitHub Gist. Create a fine-grained token at github.com/settings/personal-access-tokens with only "Gists: Read and write" permission, and paste the same token on each device.'),
+    h('label', { for: 'token' }, 'GitHub token'), token,
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'btn primary',
+        onclick: async () => {
+          const value = token.value.replace(/\s+/g, '');
+          if (value !== state.settings.token) sync.configure({ token: value, gistId: '' });
+          await sync.run();
+          const problem = tokenProblem(value);
+          if (problem && /failed/.test(sync.lastMessage)) sync.lastMessage += ' ' + problem;
+          if (state.view === 'settings') settingsView();
+        },
+      }, 'Save & sync now')));
 }
 
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {

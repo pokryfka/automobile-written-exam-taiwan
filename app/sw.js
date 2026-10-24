@@ -1,5 +1,5 @@
 // Offline support: serve same-origin files from cache, refresh them in the background.
-const CACHE = 'car-exam-v1';
+const CACHE = 'car-exam-v2';
 const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/questions.json'];
 
 // Pre-cache the app and every question picture so practice works fully offline.
@@ -20,7 +20,8 @@ self.addEventListener('activate', e => {
 
 self.addEventListener('fetch', e => {
   const url = new URL(e.request.url);
-  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  // The sync API must always hit the network.
+  if (e.request.method !== 'GET' || url.origin !== location.origin || url.pathname.includes('/api/')) return;
   e.respondWith(caches.open(CACHE).then(async cache => {
     const cached = await cache.match(e.request, { ignoreSearch: true });
     const fresh = fetch(e.request).then(res => {

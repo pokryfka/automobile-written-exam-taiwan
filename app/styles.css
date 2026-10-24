@@ -94,6 +94,7 @@ select, input[type=text], input[type=password] {
   border: 1px solid var(--border);
   background: var(--bg); color: var(--text);
 }
+.sync-code { font-family: ui-monospace, Menlo, monospace; font-size: 28px; font-weight: 700; letter-spacing: 2px; text-align: center; padding: 12px; margin: 8px 0; border: 2px dashed var(--border); border-radius: 12px; user-select: all; -webkit-user-select: all; }
 .mono { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
 label { display: block; margin: 10px 0 4px; font-size: 14px; color: var(--muted); }
 
