@@ -101,7 +101,7 @@
   "settings.questionCount": "{count} 題",
   "settings.resetConfirm": "要重設這台裝置的作答紀錄嗎？其他裝置的紀錄會保留。",
   "settings.reset": "重設這台裝置",
-  "settings.version": "版本 {version}",
+  "settings.version": "版本",
 
   "settings.support": "意見回饋",
   "settings.supportHelp": "發現答案錯誤、錯字或程式問題，或有任何建議嗎？歡迎在 GitHub 告訴我們。需要免費的 GitHub 帳號才能留言。",

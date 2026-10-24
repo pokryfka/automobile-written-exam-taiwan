@@ -955,11 +955,15 @@ document.querySelectorAll('.nav[data-view]').forEach(b => b.addEventListener('cl
 }));
 
 // "Version v2.0.0 (b853c34)", "Version v2.0.0+3 (1a2b3c4) · QA", or "Version dev" locally.
+// A release version links to its release notes, and the commit id to the commit.
 function versionLine() {
   const { version, commit, environment } = state.version;
-  const link = commit && h('a', { href: REPO_URL + '/commit/' + commit, target: '_blank', rel: 'noopener' }, commit.slice(0, 7));
-  return h('p', { class: 'muted' }, t('settings.version', { version: version || '' }),
-    version && link ? [' (', link, ')'] : link,
+  const ext = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+  const release = commit && /^v\d+(\.\d+)*$/.test(version || '');
+  const commitLink = commit && ext(REPO_URL + '/commit/' + commit, commit.slice(0, 7));
+  return h('p', { class: 'muted' }, t('settings.version'), ' ',
+    release ? ext(REPO_URL + '/releases/tag/' + version, version) : version,
+    version && commitLink ? [' (', commitLink, ')'] : commitLink,
     environment === 'qa' && ' · QA');
 }
 
