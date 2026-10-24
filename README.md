@@ -69,35 +69,16 @@ language, the second question language and the language you last used for a ques
 ## Syncing between your devices
 
 Your progress is saved on each device. To share it between your phone, tablet or computer,
-tap ⚙️ and choose a **Sync method**:
+use a **sync code**. You don't need an account.
 
-| Method | You need | Where your progress is kept |
-|---|---|---|
-| **Sync code** (easiest) | Nothing | On this app's server, under a private code |
-| **GitHub Gist** | A GitHub account | In a private file in your own GitHub account |
-
-### Sync code
-
-1. On your first device, choose **Sync code** and tap **Create a new code**. You get a code
-   like `MBD8-D3CN-FCD3`.
+1. On your first device, tap ⚙️, choose **Sync code** as the **Sync method**, and tap
+   **Create a new code**. You get a code like `MBD8-D3CN-FCD3`.
 2. On each other device, choose **Sync code**, type the code under **Use an existing code**,
    and tap **Link this device**. Capital letters, dashes and spaces don't matter. **Copy**, and
    **Share** where your browser supports it, help you send the code to your other device.
 
 **Keep the code private:** anyone who has it can see and change your progress. **Write it
 down:** if you lose it, nobody can look it up for you.
-
-### GitHub Gist
-
-1. On GitHub, open **Settings → Developer settings → Personal access tokens →
-   [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new)**.
-2. Create a token with **Account permissions → Gists: Read and write** and nothing else.
-   Pick an expiry, for example one year. A classic token with only the `gist` permission also works.
-3. In the app, choose **GitHub Gist**, paste the token, and tap **Save & sync now**.
-4. Paste the same token on your other devices. They find your progress automatically.
-
-When the token expires, create a new one and paste it on each device. Your progress stays
-in your GitHub account.
 
 ### How sync works
 
@@ -115,10 +96,7 @@ in your GitHub account.
 - **With sync**, only your practice results are stored: for each question, how often you got
   it right or wrong, your last 5 answers and when you last answered it, plus the device names
   and language choices you make. Nothing else about you is stored.
-- With a **sync code**, the server keeps your results under a scrambled form of the code, not
-  the code itself.
-- With a **GitHub Gist**, your results are stored only in your own GitHub account. Your token
-  stays on your device and is only sent to GitHub.
+- The server keeps your results under a scrambled form of your sync code, not the code itself.
 
 ## Where the questions come from
 

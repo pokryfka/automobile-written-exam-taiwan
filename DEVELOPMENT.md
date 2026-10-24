@@ -65,6 +65,7 @@ entry, so devices never overwrite each other.
 - `GET /api/sync/:code` returns all devices' entries for a code.
 - `PUT /api/sync/:code/:deviceId` with `{ name, stats, prefs }` saves one device's entry and
   returns all of them. `prefs` is optional, so older versions of the app keep working.
+- `GET /api/config` returns the deployment's features, `{ environment, gistSync }`.
 - A code is 12 Crockford base32 characters (60 random bits) generated in the app. Lower case,
   dashes, spaces, O→0 and I/L→1 are accepted.
 - The database stores the code's SHA-256 only. Each device is one row, keyed by
@@ -72,10 +73,22 @@ entry, so devices never overwrite each other.
 - Requests are validated and limited: a body size limit, a maximum number of devices per code,
   and a per-IP rate limit (see [Deployment](#deployment)).
 
-**GitHub Gist:**
+**GitHub Gist (QA only):**
 - The app stores the same document in a private gist named `taiwan-car-exam-stats.json`, using
   the GitHub API with the user's token.
 - The token is stored only in the device's `localStorage`.
+- It's offered only where `GIST_SYNC` is `"true"` in `wrangler.jsonc`: QA but not production.
+  The app reads this from `GET /api/config`, which returns `{ environment, gistSync }`, and
+  remembers it for offline use.
+- A device already set to Gist sync keeps the option, and keeps syncing, in every environment.
+
+To use it:
+1. On GitHub, open **Settings → Developer settings → Personal access tokens →
+   [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new)**.
+2. Create a token with **Account permissions → Gists: Read and write** and nothing else.
+   A classic token with only the `gist` scope also works.
+3. In the app, choose **GitHub Gist**, paste the token, and tap **Save & sync now**.
+4. Paste the same token on your other devices. They find the same gist automatically.
 
 ## Interface translations
 
@@ -181,6 +194,8 @@ Pull requests from forks run the tests only.
 - Rate limit: requests per minute per client IP to the sync API.
 - `MAX_BODY_BYTES`: the largest upload accepted.
 - `MAX_DEVICES_PER_CODE`: how many devices can share one sync code.
+- `GIST_SYNC`: whether new users are offered GitHub Gist sync (`"true"` in QA, `"false"` in
+  production).
 
 **Running your own copy:**
 
