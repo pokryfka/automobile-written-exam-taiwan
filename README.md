@@ -1,23 +1,26 @@
 # Taiwan Car Written Exam Practice
 
-A small web app for practising the English edition of Taiwan's automobile written-exam
-question bank (汽車筆試題庫, Year 115 edition, 1090 questions). It works on iPhone, iPad
-and desktop browsers, works offline, remembers which questions you get wrong, and can
-sync your progress between devices.
+A small web app for practising Taiwan's automobile written-exam question bank (汽車筆試題庫,
+1090 questions) in Chinese and English. It works in any modern browser, on phones, tablets and
+computers, works offline, remembers which questions you get wrong, and can sync your progress
+between devices.
 
 **Open the app:** https://car-exam-tw.pokryfka.workers.dev
 
 > Version 1.0.0 is still available at https://pokryfka.github.io/automobile-written-exam-taiwan/
 > but no longer updated.
 
-## Install it on your iPhone or iPad
+## Install it as an app
 
-1. Open the link above in **Safari**.
-2. Tap **Share** → **Add to Home Screen**.
-3. Launch it from the Home Screen. It opens full screen and keeps working offline.
+Open the link above, then add it to your home screen or install it:
+- **Safari:** tap **Share** → **Add to Home Screen**.
+- **Chrome on Android:** tap **⋮** → **Add to Home screen** (or **Install app**).
+- **Chrome or Edge on a computer:** click the install icon in the address bar.
 
-> The Home Screen app and the Safari tab keep separate data. Use the Home Screen app and set
-> up sync (below) so your progress is never lost.
+It then opens in its own window and keeps working offline.
+
+> On some devices the installed app and the browser tab keep separate data. Use the installed
+> app and set up sync (below) so your progress is never lost.
 
 ## Practising
 
@@ -40,7 +43,7 @@ sync your progress between devices.
   Chinese is always available. The second language is English unless you pick another one in
   ⚙️ → **Question languages** once more languages are added. The rest of the app is in English.
 
-## Syncing between iPhone and iPad
+## Syncing between devices
 
 Your stats are saved on each device. To share them between devices, tap ⚙️ and pick a
 **Sync method**:
@@ -55,8 +58,8 @@ Your stats are saved on each device. To share them between devices, tap ⚙️ a
 1. On the first device, choose **Sync code** and tap **Create a new code**. You get a code
    like `MBD8-D3CN-FCD3`.
 2. On each other device, choose **Sync code**, type the code under **Use an existing code**
-   and tap **Link this device**. Capitals, dashes and spaces don't matter. **Copy** and, on
-   iPhone and iPad, **Share** help you send the code to your other device.
+   and tap **Link this device**. Capitals, dashes and spaces don't matter. **Copy** and, where your
+   browser supports it, **Share** help you send the code to your other device.
 
 Anyone with the code can see and change those stats, so keep it private. The server stores
 only a hash of the code, not the code itself, so write it down: it cannot be recovered.

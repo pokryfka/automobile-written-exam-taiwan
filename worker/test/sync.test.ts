@@ -20,12 +20,12 @@ describe('sync API', () => {
   });
 
   it('stores each device separately and returns all of them', async () => {
-    expect((await put('ABCDEFGHJKMN', 'iphone1', { name: 'iPhone', stats })).status).toBe(200);
-    const res = await put('abcd-efgh-jkmn', 'ipad1', { name: 'iPad', stats: {} });
+    expect((await put('ABCDEFGHJKMN', 'phone1', { name: 'Phone', stats })).status).toBe(200);
+    const res = await put('abcd-efgh-jkmn', 'tablet1', { name: 'Tablet', stats: {} });
     const { devices } = await res.json<{ devices: Record<string, { name: string; stats: unknown }> }>();
-    expect(Object.keys(devices).sort()).toEqual(['ipad1', 'iphone1']);
-    expect(devices.iphone1.stats).toEqual(stats);
-    expect(devices.ipad1.name).toBe('iPad');
+    expect(Object.keys(devices).sort()).toEqual(['phone1', 'tablet1']);
+    expect(devices.phone1.stats).toEqual(stats);
+    expect(devices.tablet1.name).toBe('Tablet');
   });
 
   it('updates a device in place', async () => {

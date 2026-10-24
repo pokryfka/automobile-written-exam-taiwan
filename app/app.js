@@ -44,8 +44,9 @@ if (!/^[a-z0-9]{4,32}$/.test(state.deviceId || '')) {
 // Before sync codes existed, a saved token meant Gist sync.
 if (!state.settings.syncMode && state.settings.token) state.settings.syncMode = 'gist';
 if (!state.settings.deviceName) {
-  state.settings.deviceName = /iPad/.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Mac/.test(navigator.userAgent))
-    ? 'iPad' : /iPhone/.test(navigator.userAgent) ? 'iPhone' : 'Browser';
+  // A touch screen as the main pointer means a phone or tablet; the smaller screen side tells them apart.
+  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  state.settings.deviceName = !touch ? 'Computer' : Math.min(screen.width, screen.height) < 600 ? 'Phone' : 'Tablet';
 }
 
 function saveSettings() { store.set('settings', state.settings); }
@@ -375,7 +376,7 @@ function homeView() {
       topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, topicName(c)))),
       h('p', { class: 'muted' }, 'Section and topic apply to practice modes; the mock exam always uses the whole bank.')),
     !sync.backend() && h('div', { class: 'card' },
-      h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between iPhone and iPad.')),
+      h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between your devices.')),
   );
 }
 
@@ -668,7 +669,7 @@ function codeSettings(status, syncNow) {
 }
 
 function gistSettings() {
-  // A plain text field so iOS does not offer to autofill a saved password, and the pasted token can be checked by eye.
+  // A plain text field so browsers do not offer to autofill a saved password, and the pasted token can be checked by eye.
   const token = h('input', {
     type: 'text', id: 'token', value: state.settings.token, placeholder: 'github_pat_…',
     autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', class: 'mono',
