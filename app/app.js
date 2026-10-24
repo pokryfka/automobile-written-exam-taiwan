@@ -304,9 +304,20 @@ function langName(code) {
 function bankName(kind, key) {
   for (const code of [ui.lang, REFERENCE_LANG]) {
     const text = state.text[code];
-    if (text && text[kind][key]) return text[kind][key];
+    if (text && text[kind][key]) return displayCase(text[kind][key]);
   }
   return key;
+}
+
+// The English bank prints section names in capitals ("SECTION 1 CORRECT CONCEPTS AND ETHICS");
+// show them in title case like the topics: "Section 1: Correct Concepts and Ethics".
+const MINOR_WORDS = new Set(['a', 'an', 'and', 'as', 'at', 'by', 'for', 'in', 'of', 'on', 'or', 'the', 'to', 'with']);
+
+function displayCase(name) {
+  if (!/[A-Z]/.test(name) || name !== name.toUpperCase()) return name;
+  return name.toLowerCase()
+    .replace(/[a-z][a-z'-]*/g, (word, i) => (i > 0 && MINOR_WORDS.has(word) ? word : word[0].toUpperCase() + word.slice(1)))
+    .replace(/^(Section \d+) /, '$1: ');
 }
 
 function sectionName(key) {
