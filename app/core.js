@@ -94,13 +94,9 @@
     return shuffle(weak.concat(rest), rand);
   }
 
-  // Mock exam like the real test: true/false and multiple-choice halves.
-  function pickExam(questions, rand, perType) {
-    rand = rand || Math.random;
-    perType = perType || 20;
-    const tf = shuffle(questions.filter(q => q.type === 'tf'), rand).slice(0, perType);
-    const mc = shuffle(questions.filter(q => q.type === 'mc'), rand).slice(0, perType);
-    return tf.concat(mc);
+  // Mock exam like the real test: n random questions from the whole bank.
+  function pickExam(questions, n, rand) {
+    return shuffle(questions, rand || Math.random).slice(0, n);
   }
 
   function summary(questions, stats) {

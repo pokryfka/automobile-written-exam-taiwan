@@ -2,8 +2,14 @@
 const CACHE = 'car-exam-v1';
 const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/questions.json'];
 
+// Pre-cache the app and every question picture so practice works fully offline.
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(async c => {
+    await c.addAll(SHELL);
+    const { questions } = await (await c.match('data/questions.json')).json();
+    const pics = new Set(questions.flatMap(q => (q.images || []).concat(q.optionImages || [])).map(p => 'data/' + p));
+    await c.addAll([...pics]);
+  }).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

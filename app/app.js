@@ -2,6 +2,7 @@
 'use strict';
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
+const EXAM_SIZE = 40;
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
@@ -25,7 +26,7 @@ const state = {
   deviceId: store.get('deviceId', null),
   myStats: store.get('myStats', {}),
   remoteDoc: store.get('remoteDoc', { version: 1, devices: {} }),
-  settings: Object.assign({ token: '', gistId: '', deviceName: '', category: '', length: 20 }, store.get('settings', {})),
+  settings: Object.assign({ token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20 }, store.get('settings', {})),
   session: null,
 };
 
@@ -47,8 +48,8 @@ function allStats() {
 }
 
 function pool() {
-  const c = state.settings.category;
-  return c ? state.questions.filter(q => q.category === c) : state.questions;
+  const { section, topic } = state.settings;
+  return state.questions.filter(q => (!section || q.section === section) && (!topic || q.topic === topic));
 }
 
 // ---------- sync via a private GitHub Gist ----------
@@ -158,7 +159,7 @@ function render(...nodes) {
 }
 
 function questionLabel(q) {
-  return '#' + (q.no || q.id) + ' · ' + (q.type === 'tf' ? 'True/False' : 'Choice') + (q.category ? ' · ' + q.category : '');
+  return '#' + q.no + (q.also ? ' (also #' + q.also.join(', #') + ')' : '') + (q.topic ? ' · ' + q.topic.replace(/\s*\(.*\)$/, '') : '');
 }
 
 // ---------- views ----------
@@ -175,7 +176,9 @@ function homeView() {
   const s = Core.summary(qs, stats);
   const pct = s.total ? Math.round((s.mastered / s.total) * 100) : 0;
   const accuracy = s.right + s.wrong ? Math.round((s.right / (s.right + s.wrong)) * 100) + '%' : '–';
-  const categories = [...new Set(state.questions.map(q => q.category).filter(Boolean))].sort();
+  const unique = list => [...new Set(list.filter(Boolean))];
+  const sections = unique(state.questions.map(q => q.section));
+  const topics = unique(state.questions.filter(q => !state.settings.section || q.section === state.settings.section).map(q => q.topic));
   const len = state.settings.length;
 
   const start = (mode) => () => {
@@ -204,20 +207,27 @@ function homeView() {
         h('button', { onclick: start('unseen') }, h('b', {}, '🆕 New'), h('small', {}, 'Never answered')),
         h('button', { onclick: start('random') }, h('b', {}, '🎲 Random'), h('small', {}, 'Any question')),
         h('button', {
-          onclick: () => startSession(Core.pickExam(state.questions).map(q => q.id), 'exam', true),
-        }, h('b', {}, '📝 Mock exam'), h('small', {}, '20 T/F + 20 choice')),
+          onclick: () => startSession(Core.pickExam(state.questions, EXAM_SIZE).map(q => q.id), 'exam', true),
+        }, h('b', {}, '📝 Mock exam'), h('small', {}, EXAM_SIZE + ' questions, pass ' + EXAM_PASS)),
         h('button', { onclick: weakListView }, h('b', {}, '📊 Weak list'), h('small', {}, 'Your top mistakes'))),
       h('label', { for: 'len' }, 'Questions per session'),
       h('select', {
         id: 'len',
         onchange: e => { state.settings.length = +e.target.value; saveSettings(); },
       }, [10, 20, 40, 80].map(n => h('option', { value: n, selected: n === len }, n))),
-      categories.length > 1 && h('label', { for: 'cat' }, 'Category'),
-      categories.length > 1 && h('select', {
-        id: 'cat',
-        onchange: e => { state.settings.category = e.target.value; saveSettings(); homeView(); },
-      }, h('option', { value: '' }, 'All categories'),
-      categories.map(c => h('option', { value: c, selected: c === state.settings.category }, c)))),
+      h('label', { for: 'section' }, 'Section'),
+      h('select', {
+        id: 'section',
+        onchange: e => { state.settings.section = e.target.value; state.settings.topic = ''; saveSettings(); homeView(); },
+      }, h('option', { value: '' }, 'All sections'),
+      sections.map(c => h('option', { value: c, selected: c === state.settings.section }, c))),
+      h('label', { for: 'topic' }, 'Topic'),
+      h('select', {
+        id: 'topic',
+        onchange: e => { state.settings.topic = e.target.value; saveSettings(); homeView(); },
+      }, h('option', { value: '' }, 'All topics'),
+      topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, c))),
+      h('p', { class: 'muted' }, 'Section and topic apply to practice modes; the mock exam always uses the whole bank.')),
     !state.settings.token && h('div', { class: 'card' },
       h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between iPhone and iPad.')),
   );
@@ -237,7 +247,8 @@ function weakListView() {
       ? [
         h('button', { class: 'btn primary', style: 'width:100%;margin-bottom:10px', onclick: () => startSession(rows.slice(0, state.settings.length).map(x => x.q.id), 'weak', false) }, 'Practice these'),
         h('table', { class: 'weak' }, rows.map(({ q, r }) => h('tr', {},
-          h('td', {}, h('div', { class: 'muted' }, questionLabel(q)), q.q),
+          h('td', {}, h('div', { class: 'muted' }, questionLabel(q)),
+            (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })), q.q),
           h('td', { class: 'num' }, '✗' + r.w + ' ✓' + r.c)))),
       ]
       : h('p', { class: 'muted' }, 'No mistakes recorded yet.')));
@@ -258,11 +269,11 @@ function questionView() {
   const feedback = h('div', { class: 'feedback' });
   const actions = h('div', { class: 'actions' });
 
-  const choices = q.type === 'tf'
-    ? [{ label: 'O  True', value: true }, { label: 'X  False', value: false }]
-    : q.options.map((o, i) => ({ label: '(' + (i + 1) + ') ' + o, value: i }));
+  const choices = q.options.map((o, i) => ({ label: '(' + (i + 1) + ') ' + o, value: i }));
 
-  const buttons = choices.map(ch => h('button', { onclick: () => choose(ch.value) }, ch.label));
+  const buttons = choices.map((ch, i) => h('button', { onclick: () => choose(ch.value) },
+    ch.label,
+    q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: 'Option ' + (i + 1) })));
 
   function choose(value) {
     if (answered) return;
@@ -296,9 +307,9 @@ function questionView() {
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
       h('span', {}, r ? '✗' + r.w + ' ✓' + r.c : 'new')),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
-    q.image && h('img', { class: 'qimg', src: 'data/' + q.image, alt: 'Question illustration' }),
+    (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: 'Question illustration' })),
     h('p', { class: 'qtext' }, q.q),
-    h('div', { class: 'options' + (q.type === 'tf' ? ' tf' : '') }, buttons),
+    h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
     feedback,
     actions));
 }
@@ -317,8 +328,12 @@ function resultView() {
     s.exam && h('p', { style: 'text-align:center' }, score >= EXAM_PASS ? 'Pass 🎉' : 'Below ' + EXAM_PASS + ', keep practising'),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
-      const ans = q.type === 'tf' ? (q.answer ? 'O' : 'X') : '(' + (q.answer + 1) + ') ' + q.options[q.answer];
-      return h('tr', {}, h('td', {}, h('div', { class: 'muted' }, questionLabel(q)), q.q, h('div', { class: 'muted' }, 'Answer: ' + ans)));
+      return h('tr', {}, h('td', {},
+        h('div', { class: 'muted' }, questionLabel(q)),
+        (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })),
+        q.q,
+        h('div', { class: 'muted' }, 'Answer: (' + (q.answer + 1) + ') ' + q.options[q.answer]),
+        q.optionImages && h('img', { class: 'thumb', src: 'data/' + q.optionImages[q.answer], alt: 'Correct option' })));
     })),
     h('div', { class: 'actions' },
       wrongIds.length > 0 && h('button', { class: 'btn', onclick: () => startSession(Core.shuffle(wrongIds, Math.random), 'retry', false) }, 'Retry mistakes'),
@@ -385,7 +400,8 @@ async function boot() {
     if (res.ok) state.questions = (await res.json()).questions || [];
   } catch (e) { /* offline without cache, or missing file */ }
   state.questions.forEach(q => { state.byId[q.id] = q; });
-  if (state.settings.category && !state.questions.some(q => q.category === state.settings.category)) state.settings.category = '';
+  if (!state.questions.some(q => q.section === state.settings.section)) state.settings.section = '';
+  if (!state.questions.some(q => q.topic === state.settings.topic)) state.settings.topic = '';
   homeView();
   sync.run();
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});

@@ -2,7 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert');
 const Core = require('../app/core.js');
 
-const qs = Array.from({ length: 50 }, (_, i) => ({ id: 'q' + i, type: i % 2 ? 'mc' : 'tf' }));
+const qs = Array.from({ length: 50 }, (_, i) => ({ id: 'q' + i }));
 
 test('recordAnswer keeps counts and short history', () => {
   const s = {};
@@ -44,7 +44,7 @@ test('smart mode favours failed questions', () => {
 test('unseen mode and mock exam', () => {
   const stats = { q0: { c: 1, w: 0, h: '1', t: 1 } };
   assert.ok(!Core.pickQuestions(qs, stats, 'unseen', 100).some(q => q.id === 'q0'));
-  const exam = Core.pickExam(qs, Math.random, 20);
-  assert.strictEqual(exam.filter(q => q.type === 'tf').length, 20);
-  assert.strictEqual(exam.filter(q => q.type === 'mc').length, 20);
+  const exam = Core.pickExam(qs, 40);
+  assert.strictEqual(exam.length, 40);
+  assert.strictEqual(new Set(exam.map(q => q.id)).size, 40);
 });
