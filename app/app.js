@@ -72,7 +72,14 @@ const sync = {
       },
       cache: 'no-store',
     }));
-    if (!res.ok) throw new Error('GitHub ' + res.status + ' ' + (await res.text()).slice(0, 120));
+    if (!res.ok) {
+      const hint = {
+        401: 'GitHub does not recognise this token. Check it was copied completely, or create a new one.',
+        403: 'The token is missing the "Gists: Read and write" permission.',
+        404: 'The token is missing the "Gists: Read and write" permission, or the gist was deleted.',
+      }[res.status];
+      throw new Error('GitHub ' + res.status + (hint ? ': ' + hint : ' ' + (await res.text()).slice(0, 120)));
+    }
     return res.json();
   },
   async findOrCreateGist() {
@@ -340,10 +347,22 @@ function resultView() {
       h('button', { class: 'btn primary', onclick: homeView }, 'Home'))));
 }
 
+// Fine-grained tokens are "github_pat_" + 82 characters, classic ones "ghp_" + 36. Only used as a hint after a failed sync.
+function tokenProblem(t) {
+  if (!t) return '';
+  if (/^github_pat_\w{82}$/.test(t) || /^ghp_[A-Za-z0-9]{36}$/.test(t)) return '';
+  if (/^(github_pat_|ghp_)/.test(t)) return 'This token has ' + t.length + ' characters, expected ' + (t.startsWith('ghp_') ? 40 : 93) + '. It was probably not copied completely.';
+  return 'This does not look like a GitHub token. It should start with "github_pat_".';
+}
+
 function settingsView() {
   state.view = 'settings';
   const devices = Object.entries(state.remoteDoc.devices || {});
-  const token = h('input', { type: 'password', id: 'token', value: state.settings.token, autocomplete: 'off', placeholder: 'github_pat_…' });
+  // A plain text field so iOS does not offer to autofill a saved password, and the pasted token can be checked by eye.
+  const token = h('input', {
+    type: 'text', id: 'token', value: state.settings.token, placeholder: 'github_pat_…',
+    autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', class: 'mono',
+  });
   const name = h('input', { type: 'text', id: 'dname', value: state.settings.deviceName });
   const status = h('p', { class: 'muted' }, sync.lastMessage || '');
 
@@ -358,14 +377,16 @@ function settingsView() {
         h('button', {
           class: 'btn primary',
           onclick: async () => {
-            const changed = token.value.trim() !== state.settings.token;
-            state.settings.token = token.value.trim();
+            const value = token.value.replace(/\s+/g, '');
+            const changed = value !== state.settings.token;
+            state.settings.token = value;
             state.settings.deviceName = name.value.trim() || state.settings.deviceName;
             if (changed) state.settings.gistId = '';
             saveSettings();
             status.textContent = 'Syncing…';
             await sync.run();
-            status.textContent = sync.lastMessage;
+            const problem = tokenProblem(value);
+            status.textContent = sync.lastMessage + (problem && /failed/.test(sync.lastMessage) ? ' ' + problem : '');
           },
         }, 'Save & sync now')),
       status,
