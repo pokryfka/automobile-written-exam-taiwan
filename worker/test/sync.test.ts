@@ -52,6 +52,21 @@ describe('sync API', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('stores language preferences per device', async () => {
+    const prefs = { uiLang: 'zh-Hant', secondLang: 'en', questionLang: 'zh-Hant', updated: 1700000000000 };
+    await put('ABCDEFGHJKMW', 'dev1', { stats, prefs });
+    await put('ABCDEFGHJKMW', 'dev2', { stats: {} }); // an older app sends no prefs
+    const { devices } = await (await call('/ABCDEFGHJKMW')).json<{ devices: Record<string, { prefs: unknown }> }>();
+    expect(devices.dev1.prefs).toEqual(prefs);
+    expect(devices.dev2.prefs).toEqual({});
+  });
+
+  it('rejects invalid language preferences', async () => {
+    expect((await put('ABCDEFGHJKMX', 'dev1', { stats, prefs: 'en' })).status).toBe(400);
+    expect((await put('ABCDEFGHJKMX', 'dev1', { stats, prefs: { uiLang: '<script>' } })).status).toBe(400);
+    expect((await put('ABCDEFGHJKMX', 'dev1', { stats, prefs: { updated: -1 } })).status).toBe(400);
+  });
+
   it('rejects oversized bodies', async () => {
     const big = { stats, pad: 'x'.repeat(300_000) };
     expect((await put('ABCDEFGHJKMS', 'dev1', big)).status).toBe(413);

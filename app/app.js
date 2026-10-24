@@ -31,9 +31,10 @@ const state = {
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
-    uiLang: '', // interface language; '' = from the browser's preferred languages
+    uiLang: 'en', // interface language
     secondLang: 'en', // language offered next to Chinese on each question
     questionLang: 'en', // language the next question opens in
+    prefsUpdated: 0, // when the three language choices above last changed; synced between devices
   }, store.get('settings', {})),
   session: null,
 };
@@ -68,14 +69,9 @@ function uiLocale() {
   return (UI_LANGS.find(l => l.code === ui.lang) || UI_LANGS[0]).locale;
 }
 
-// The saved choice, else the first supported language the browser prefers (any Chinese -> Traditional), else English.
+// The saved choice, else English.
 function preferredUiLang() {
-  if (UI_LANGS.some(l => l.code === state.settings.uiLang)) return state.settings.uiLang;
-  for (const pref of navigator.languages || [navigator.language || '']) {
-    if (/^zh\b/i.test(pref)) return 'zh-Hant';
-    if (/^en\b/i.test(pref)) return 'en';
-  }
-  return 'en';
+  return UI_LANGS.some(l => l.code === state.settings.uiLang) ? state.settings.uiLang : 'en';
 }
 
 async function loadStrings(code) {
@@ -204,6 +200,44 @@ function pool() {
   return state.questions.filter(q => (!section || q.section === section) && (!topic || q.topic === topic));
 }
 
+// ---------- language choices ----------
+// The interface language, second question language and last question language are synced
+// between devices: each device sends its choices with the time they last changed, and the
+// most recent choices from any device win.
+
+function currentPrefs() {
+  return {
+    uiLang: ui.lang,
+    secondLang: secondLang(),
+    questionLang: state.settings.questionLang,
+    updated: state.settings.prefsUpdated || 0,
+  };
+}
+
+// Call after the user changes a language choice on this device.
+function prefsChanged() {
+  state.settings.prefsUpdated = Date.now();
+  saveSettings();
+  sync.soon();
+}
+
+// Apply newer choices made on another device. Returns true if anything was applied.
+async function adoptPrefs(devices) {
+  let latest = null;
+  for (const [id, d] of Object.entries(devices || {})) {
+    const p = d && d.prefs;
+    if (id !== state.deviceId && p && (p.updated || 0) > (latest ? latest.updated : state.settings.prefsUpdated || 0)) latest = p;
+  }
+  if (!latest) return false;
+  if (latest.secondLang && available(latest.secondLang) && await loadText(latest.secondLang)) state.settings.secondLang = latest.secondLang;
+  if (latest.questionLang && available(latest.questionLang)) state.settings.questionLang = latest.questionLang;
+  if (latest.uiLang && latest.uiLang !== ui.lang && UI_LANGS.some(l => l.code === latest.uiLang)
+    && await setUiLang(latest.uiLang)) state.settings.uiLang = latest.uiLang;
+  state.settings.prefsUpdated = latest.updated;
+  saveSettings();
+  return true;
+}
+
 // ---------- sync ----------
 // Two backends share one document shape, { devices: { [deviceId]: { name, updated, stats } } },
 // in which each device writes only its own entry:
@@ -285,7 +319,7 @@ const codeSync = {
     const res = await fetch('api/sync/' + state.settings.syncCode + '/' + state.deviceId, {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: entry.name, stats: entry.stats }),
+      body: JSON.stringify({ name: entry.name, stats: entry.stats, prefs: entry.prefs }),
       cache: 'no-store',
     });
     const body = await res.json().catch(() => ({}));
@@ -316,14 +350,16 @@ const sync = {
     sync.busy = true;
     sync.status('busy', t('sync.syncing'));
     try {
-      const entry = { name: state.settings.deviceName, updated: Date.now(), stats: state.myStats };
+      const entry = { name: state.settings.deviceName, updated: Date.now(), stats: state.myStats, prefs: currentPrefs() };
       const doc = await backend.push(entry);
       if (backend !== sync.backend()) return; // settings changed while syncing
       state.remoteDoc = doc;
       store.set('remoteDoc', doc);
       store.set('lastSync', Date.now());
+      const adopted = await adoptPrefs(doc.devices);
       sync.status('ok', t('sync.synced', { time: new Date().toLocaleTimeString(uiLocale()) }));
       if (state.view === 'home') homeView();
+      else if (adopted && state.view === 'settings') settingsView();
     } catch (e) {
       sync.status('err', t('sync.failed', { error: e.message }));
     } finally {
@@ -506,7 +542,7 @@ function questionView() {
         title: available ? '' : t('q.notAvailable', { language: langName(code) }),
         onclick: () => {
           state.settings.questionLang = code;
-          saveSettings();
+          prefsChanged();
           showText(code);
         },
       }, langLabel(code));
@@ -648,8 +684,8 @@ function settingsView() {
             return;
           }
           state.settings.uiLang = code;
-          saveSettings();
-          settingsView();
+          prefsChanged();
+          if (state.view === 'settings') settingsView(); // unless the user moved on while the strings loaded
         },
       }, UI_LANGS.map(l => h('option', { value: l.code, selected: l.code === ui.lang }, l.name)))),
     h('div', { class: 'card' },
@@ -681,7 +717,7 @@ function settingsView() {
           }
           if (state.settings.questionLang === secondLang()) state.settings.questionLang = code;
           state.settings.secondLang = code;
-          saveSettings();
+          prefsChanged();
         },
       }, state.languages.filter(l => l.code !== PRIMARY_LANG).map(l =>
         h('option', { value: l.code, selected: l.code === secondLang() }, langName(l.code))))),

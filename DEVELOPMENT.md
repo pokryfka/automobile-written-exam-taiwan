@@ -52,17 +52,23 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 - Stats from all devices are summed for display.
 
 **Shared document format:** both sync methods use the same document,
-`{ devices: { [deviceId]: { name, updated, stats } } }`. Each device writes only its own
+`{ devices: { [deviceId]: { name, updated, stats, prefs } } }`. Each device writes only its own
 entry, so devices never overwrite each other.
+
+**Language choices (`prefs`):**
+- `prefs` holds `{ uiLang, secondLang, questionLang, updated }`, where `updated` is when this
+  device's choices last changed.
+- After each sync the app applies the most recently updated `prefs` from any other device, if
+  they're newer than its own.
 
 **Sync code:** handled by the Worker's API.
 - `GET /api/sync/:code` returns all devices' entries for a code.
-- `PUT /api/sync/:code/:deviceId` with `{ name, stats }` saves one device's entry and returns
-  all of them.
+- `PUT /api/sync/:code/:deviceId` with `{ name, stats, prefs }` saves one device's entry and
+  returns all of them. `prefs` is optional, so older versions of the app keep working.
 - A code is 12 Crockford base32 characters (60 random bits) generated in the app. Lower case,
   dashes, spaces, O→0 and I/L→1 are accepted.
 - The database stores the code's SHA-256 only. Each device is one row, keyed by
-  `(code_hash, device_id)`.
+  `(code_hash, device_id)`. The `prefs` column was added by migration `0002`.
 - Requests are validated and limited: a body size limit, a maximum number of devices per code,
   and a per-IP rate limit (see [Deployment](#deployment)).
 
@@ -79,8 +85,8 @@ entry, so devices never overwrite each other.
   language, falling back to English and then to the key itself.
 - **Choosing the language:**
   - The interface language is chosen in ⚙️, independently of the question languages.
-  - The default comes from the browser's preferred languages: any Chinese locale picks
-    `zh-Hant`, otherwise English.
+  - The default is English.
+  - The choice is synced between devices (see [Stats and sync](#stats-and-sync)).
 - **Section and topic names** follow the interface language when the question bank has them
   in that language, otherwise English.
 - **Offline:** the service worker precaches the English and Chinese string files.

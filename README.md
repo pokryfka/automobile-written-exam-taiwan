@@ -48,9 +48,8 @@ Pick a mode on the home screen:
 ## Languages
 
 **App language:** the app's buttons and menus are in **English** or **Traditional Chinese
-(繁體中文，台灣)**. It starts in Chinese if your browser prefers Chinese, otherwise in English.
-To change it, go to ⚙️ → **App language · 介面語言**. This setting is separate from the
-language of the questions.
+(繁體中文，台灣)**. It starts in English. To change it, go to ⚙️ → **App language · 介面語言**.
+This setting is separate from the language of the questions.
 
 **Question language:** each question and its answers can be shown in **Chinese (中文)** or a
 **second language**.
@@ -63,6 +62,9 @@ used last.
   You can see each edition in ⚙️ → **Data**. In the current editions, 4 question numbers
   (#52, #164, #913 and #1036) have different questions in each language, so those 4 are
   shown in English only.
+
+If you [sync your devices](#syncing-between-your-devices), your language choices sync too: the app
+language, the second question language and the language you last used for a question.
 
 ## Syncing between your devices
 
@@ -112,7 +114,7 @@ in your GitHub account.
 - **Without sync**, your progress stays on your device.
 - **With sync**, only your practice results are stored: for each question, how often you got
   it right or wrong, your last 5 answers and when you last answered it, plus the device names
-  you choose. Nothing else about you is stored.
+  and language choices you make. Nothing else about you is stored.
 - With a **sync code**, the server keeps your results under a scrambled form of the code, not
   the code itself.
 - With a **GitHub Gist**, your results are stored only in your own GitHub account. Your token
