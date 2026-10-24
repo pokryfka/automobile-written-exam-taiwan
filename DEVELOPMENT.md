@@ -192,7 +192,13 @@ runs the type check and tests on every pull request and push, then deploys:
 | Environment | URL | Database | Deployed when |
 |---|---|---|---|
 | QA | https://qa.car-exam.fyi | `car-exam-tw-qa` | A pull request is opened or updated |
-| Production | https://car-exam.fyi | `car-exam-tw` | A pull request is merged to `main`, or a `v*` tag is pushed |
+| Production | https://car-exam.fyi | `car-exam-tw` | A release tag such as `v2.1.0` is pushed |
+
+Merging to `main` doesn't deploy. To release:
+1. Create a release on GitHub with a new tag such as `v2.1.0` on `main`, or push the tag.
+2. The tag must look like `v1.2.3` and point to a commit on `main`, otherwise production isn't
+   deployed.
+3. If the `production` environment requires approval, approve the deploy on the workflow run.
 
 Each deploy first applies new migrations from `migrations/` to that environment's database.
 Both environments also stay on their `workers.dev` addresses (`car-exam-tw.pokryfka.workers.dev`
@@ -237,5 +243,5 @@ GitHub. Any other version shows its commit id, linking to the commit:
   environment.
 - The service worker caches `version.json` with the rest of the app, so the version shown is
   the one the device is actually running.
-- To release, tag the commit on `main` (for example `v2.1.0`) and push the tag. Pushing a
-  `v*` tag deploys production again, so it shows the plain release version.
+- Production shows plain release versions, since only release tags are deployed there. QA shows
+  the commits since the last release.
