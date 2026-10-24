@@ -42,6 +42,7 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 | `migrations/` | D1 schema migrations |
 | `wrangler.jsonc` | Worker configuration for production and QA |
 | `tools/extract_questions.py` | PDF → `bank.json` and `text/<lang>.json` extractor |
+| `tools/extract_hazard.py` | Hazard-perception PDFs → `hazard.json` extractor |
 | `tools/write_version.mjs` | Writes `app/version.json` before each deploy (see [Versions](#versions)) |
 | `tests/` | Unit tests for `app/core.js` and consistency checks for `app/data/` |
 
@@ -136,6 +137,7 @@ To add an interface language:
 | `app/data/bank.json` | Language-neutral: id, number, answer, section and topic keys, pictures, and the list of languages with their editions |
 | `app/data/text/<lang>.json` | Question and option text plus section and topic names, keyed by question id |
 | `app/data/images/` | Pictures, taken from the English edition and shared by all languages |
+| `app/data/hazard.json` | The hazard-perception video questions, with their text in each language and video links. The app adds them to the bank as the section `hazard` |
 
 **Languages in the app:**
 - Chinese (`zh-Hant`) is always offered, together with one second language chosen in settings
@@ -183,6 +185,27 @@ python3 tools/extract_questions.py --lang zh-Hant chinese.pdf
 3. Check that the language's name is in `LANGUAGE_NAMES`.
 
 Use `--debug <page>` to see how the script reads one page.
+
+**Hazard-perception video questions** (汽車危險感知影片選擇題) are a separate one-page PDF per
+language on the same page. They're kept in their own file, so re-running the script above
+doesn't touch them:
+
+```sh
+python3 tools/extract_hazard.py --edition 115.6.5 --date 2026-06-05 \
+    --lang en english.pdf --lang zh-Hant chinese.pdf
+```
+
+- **Ids:** a hash of the English text, prefixed with `h`.
+- **Checks:** the script stops if a language is missing a question, or has a different answer
+  or video number than English.
+- **Edition:** the PDFs don't print their edition, so pass it from the bank page or the file
+  name (`1150605-…` is 115.6.5).
+
+## Mock exam
+
+The rules are in `EXAM` in `app/app.js`. They follow the Highway Bureau's
+[online practice test](https://www.mvdis.gov.tw/m3-simulator-drv/index): 50 random questions,
+5 of them hazard-perception questions, 2 points each, 85 points to pass.
 
 ## Deployment
 
