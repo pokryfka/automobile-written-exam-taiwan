@@ -48,8 +48,15 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 ## Stats and sync
 
 **On the device:**
-- Each device keeps its own stats in `localStorage`, keyed by question id: times right, times
-  wrong, the last 5 results and the time of the last answer.
+- Each device keeps its own stats in `localStorage`, keyed by question id:
+  `{ c, w, u, h, t }`.
+  - `c` and `w`: times right and wrong.
+  - `u`: how many of the right answers were marked **Unsure**. It's only present once one was.
+  - `h`: the last 5 results, newest last: `1` right, `0` wrong, `2` right but unsure.
+  - `t`: the time of the last answer.
+- A question needs review once it has a wrong or unsure answer, until it's mastered: the last 3
+  results are `111`. An unsure answer counts half as much as a wrong one when ranking weak
+  questions (`app/core.js`).
 - Stats from all devices are summed for display.
 
 **Shared document format:** both sync methods use the same document,

@@ -4,7 +4,8 @@
 
   // Per-question record kept by each device:
   //   c: times answered correctly, w: times answered wrong,
-  //   h: last results, newest last ("1" right, "0" wrong), at most HISTORY chars,
+  //   u: of the correct answers, how many were marked unsure (only present once one was),
+  //   h: last results, newest last ("1" right, "0" wrong, "2" right but unsure), at most HISTORY chars,
   //   t: timestamp (ms) of the last answer.
   const HISTORY = 5;
 
@@ -12,10 +13,13 @@
     return { c: 0, w: 0, h: '', t: 0 };
   }
 
-  function recordAnswer(stats, qid, correct, now) {
+  // A correct answer marked unsure counts as correct but keeps the question under review.
+  function recordAnswer(stats, qid, correct, now, unsure) {
     const r = stats[qid] || emptyRecord();
+    const doubtful = correct && !!unsure;
     if (correct) r.c++; else r.w++;
-    r.h = (r.h + (correct ? '1' : '0')).slice(-HISTORY);
+    if (doubtful) r.u = (r.u || 0) + 1;
+    r.h = (r.h + (doubtful ? '2' : correct ? '1' : '0')).slice(-HISTORY);
     r.t = now;
     stats[qid] = r;
     return r;
@@ -30,6 +34,7 @@
         const m = out[qid] || (out[qid] = emptyRecord());
         m.c += r.c || 0;
         m.w += r.w || 0;
+        if (r.u) m.u = (m.u || 0) + r.u;
         if ((r.t || 0) >= m.t) { m.t = r.t || 0; m.h = r.h || ''; }
       }
     }
@@ -37,20 +42,28 @@
   }
 
   // How much a question needs practice, higher is weaker.
-  // Laplace-smoothed error rate, boosted when the latest answers were wrong
-  // and damped once it has been answered right several times in a row.
+  // Laplace-smoothed error rate, where an unsure answer counts half as much as a wrong one,
+  // boosted when the latest answer was wrong or unsure
+  // and damped once it has been answered right (and sure) several times in a row.
   function weakness(r) {
     if (!r || r.c + r.w === 0) return null;
-    let score = (r.w + 1) / (r.c + r.w + 2);
+    let score = (r.w + (r.u || 0) / 2 + 1) / (r.c + r.w + 2);
     const last = r.h.slice(-1);
     if (last === '0') score += 0.5;
-    const streak = r.h.length - r.h.lastIndexOf('0') - 1;
+    else if (last === '2') score += 0.25;
+    const streak = r.h.length - r.h.replace(/1+$/, '').length;
     if (streak >= 3) score *= 0.3;
     return score;
   }
 
+  // Mastered: the last 3 answers were right, and not marked unsure.
   function isMastered(r) {
     return !!r && r.h.length >= 3 && r.h.slice(-3) === '111';
+  }
+
+  // Questions to review: answered wrong or unsure at least once, and not mastered since.
+  function needsReview(r) {
+    return !!r && (r.w > 0 || (r.u || 0) > 0) && !isMastered(r);
   }
 
   function shuffle(arr, rand) {
@@ -80,11 +93,11 @@
       return shuffle(questions.filter(q => !stats[q.id] || stats[q.id].c + stats[q.id].w === 0), rand).slice(0, n);
     }
     if (mode === 'weak') {
-      const failed = questions.filter(q => stats[q.id] && stats[q.id].w > 0 && !isMastered(stats[q.id]));
+      const failed = questions.filter(q => needsReview(stats[q.id]));
       return weightedSample(failed, q => weakness(stats[q.id]), n, rand);
     }
-    // smart: up to 60% failed questions (weakest most likely), the rest weighted towards unseen ones.
-    const failed = questions.filter(q => stats[q.id] && stats[q.id].w > 0 && !isMastered(stats[q.id]));
+    // smart: up to 60% questions to review (weakest most likely), the rest weighted towards unseen ones.
+    const failed = questions.filter(q => needsReview(stats[q.id]));
     const weak = weightedSample(failed, q => weakness(stats[q.id]), Math.ceil(n * 0.6), rand);
     const taken = new Set(weak.map(q => q.id));
     const rest = weightedSample(questions.filter(q => !taken.has(q.id)), q => {
@@ -108,12 +121,12 @@
       right += r.c;
       wrong += r.w;
       if (isMastered(r)) mastered++;
-      else if (r.w > 0) weak++;
+      else if (needsReview(r)) weak++;
     }
     return { total: questions.length, seen, mastered, weak, right, wrong };
   }
 
-  const api = { HISTORY, recordAnswer, mergeDevices, weakness, isMastered, pickQuestions, pickExam, summary, shuffle };
+  const api = { HISTORY, recordAnswer, mergeDevices, weakness, isMastered, needsReview, pickQuestions, pickExam, summary, shuffle };
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.Core = api;
 })(this);

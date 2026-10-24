@@ -137,6 +137,11 @@ label.first { margin-top: 0; }
 .options button.wrong { border-color: var(--bad); background: var(--bad-bg); }
 
 .feedback { margin-top: 14px; font-weight: 600; }
+.unsure-row { margin-top: 10px; }
+.unsure-toggle { font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--muted); padding: 4px 14px; min-height: 32px; cursor: pointer; }
+.unsure-toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
+.unsure-toggle:disabled { cursor: default; }
+.unsure-toggle:disabled:not(.on) { opacity: .35; }
 .feedback.good { color: var(--good); }
 .feedback.bad { color: var(--bad); }
 .actions { display: flex; gap: 10px; margin-top: 14px; }
