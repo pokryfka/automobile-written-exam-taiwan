@@ -95,9 +95,42 @@ function flagIcon(flag) {
 
 const ui = { lang: 'en', strings: {}, fallback: {} };
 
-function t(key, vars) {
+// Interface text is "live": t() returns an object that turns into the string in the current
+// language whenever it is used. Elements built with h() remember the live text they show, and
+// switching the language only updates that text in place (see refreshLive), so the screen,
+// scroll position, typed input and answers stay as they are.
+class Live {
+  constructor(fn) { this.fn = fn; }
+  toString() { return this.fn(); }
+}
+
+function live(fn) {
+  return new Live(fn);
+}
+
+// The string now, for logic and comparisons.
+function tr(key, vars) {
   const s = ui.strings[key] ?? ui.fallback[key] ?? key;
-  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? String(vars[k]) : m)) : s;
+}
+
+function t(key, vars) {
+  return live(() => tr(key, vars));
+}
+
+// Text nodes and attributes showing live text; pruned of detached nodes after each render.
+let liveNodes = [];
+
+function liveText(text) {
+  const node = document.createTextNode(String(text));
+  if (text instanceof Live) liveNodes.push({ node, text });
+  return node;
+}
+
+function refreshLive() {
+  for (const { node, attr, text } of liveNodes) {
+    if (attr) node.setAttribute(attr, String(text)); else node.data = String(text);
+  }
 }
 
 function uiLocale() {
@@ -125,15 +158,16 @@ async function setUiLang(code) {
   ui.lang = code;
   ui.strings = strings;
   document.documentElement.lang = uiLocale();
-  document.title = t('app.title');
-  document.getElementById('title').textContent = t('app.title');
+  document.title = tr('app.title');
+  document.getElementById('title').textContent = tr('app.title');
   document.querySelector('[data-view=home]').setAttribute('aria-label', t('nav.home'));
   document.querySelector('[data-view=settings]').setAttribute('aria-label', t('nav.settings'));
-  document.getElementById('sync-dot').title = sync.lastMessage || t('sync.statusLabel');
+  document.getElementById('sync-dot').title = String(sync.lastMessage || tr('sync.statusLabel'));
   const current = UI_LANGS.find(l => l.code === code);
   const button = document.getElementById('lang-btn');
   button.replaceChildren(flagIcon(current.flag));
-  button.setAttribute('aria-label', t('settings.appLanguage') + ': ' + current.name);
+  button.setAttribute('aria-label', tr('settings.appLanguage') + ': ' + current.name);
+  refreshLive();
   return true;
 }
 
@@ -167,7 +201,6 @@ const langMenu = {
     }
     state.settings.uiLang = code;
     prefsChanged();
-    redraw();
   },
 };
 langMenu.button.addEventListener('click', e => {
@@ -189,7 +222,7 @@ document.addEventListener('keydown', e => {
 function defaultDeviceName() {
   // A touch screen as the main pointer means a phone or tablet; the smaller screen side tells them apart.
   const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  return t(!touch ? 'device.computer' : Math.min(screen.width, screen.height) < 600 ? 'device.phone' : 'device.tablet');
+  return tr(!touch ? 'device.computer' : Math.min(screen.width, screen.height) < 600 ? 'device.phone' : 'device.tablet');
 }
 
 function randomString(alphabet, length) {
@@ -250,8 +283,10 @@ function langLabel(code) {
 
 // Language name in the interface language, for sentences and settings.
 function langName(code) {
-  const name = t('lang.' + code);
-  return name === 'lang.' + code ? langLabel(code) : name;
+  return live(() => {
+    const name = tr('lang.' + code);
+    return name === 'lang.' + code ? langLabel(code) : name;
+  });
 }
 
 // Section and topic names follow the interface language when the question bank has them.
@@ -264,11 +299,11 @@ function bankName(kind, key) {
 }
 
 function sectionName(key) {
-  return bankName('sections', key);
+  return live(() => bankName('sections', key));
 }
 
 function topicName(key) {
-  return bankName('topics', key);
+  return live(() => bankName('topics', key));
 }
 
 async function loadText(code) {
@@ -420,11 +455,13 @@ const sync = {
   timer: null,
   busy: false,
   lastMessage: '',
+  lastKind: '',
   status(kind, msg) {
     const dot = document.getElementById('sync-dot');
     dot.className = 'sync-dot ' + (kind || '');
-    dot.title = msg || '';
+    dot.title = String(msg || '');
     sync.lastMessage = msg || '';
+    sync.lastKind = kind || '';
   },
   backend() {
     const { syncMode, syncCode, token } = state.settings;
@@ -447,7 +484,11 @@ const sync = {
       const adopted = await adoptPrefs(doc.devices);
       sync.status('ok', t('sync.synced', { time: new Date().toLocaleTimeString(uiLocale()) }));
       if (state.view === 'home') homeView();
-      else if (adopted) redraw();
+      else if (adopted) {
+        // Settings show the second language as a choice; the rest updates in place.
+        const select = document.getElementById('second-lang');
+        if (select) select.value = secondLang();
+      }
     } catch (e) {
       sync.status('err', t('sync.failed', { error: e.message }));
     } finally {
@@ -481,29 +522,27 @@ function h(tag, attrs, ...children) {
   for (const [k, v] of Object.entries(attrs || {})) {
     if (k === 'class') el.className = v;
     else if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
-    else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
+    else if (v instanceof Live) {
+      el.setAttribute(k, String(v));
+      liveNodes.push({ node: el, attr: k, text: v });
+    } else if (v !== false && v != null) el.setAttribute(k, v === true ? '' : v);
   }
   for (const c of children.flat()) {
     if (c == null || c === false) continue;
-    el.append(c instanceof Node ? c : document.createTextNode(String(c)));
+    el.append(c instanceof Node ? c : liveText(c));
   }
   return el;
 }
 
 function render(...nodes) {
   view.replaceChildren(...nodes);
+  liveNodes = liveNodes.filter(e => e.node.isConnected);
   window.scrollTo(0, 0);
 }
 
-// Draw the current screen again, e.g. in a new interface language. A question keeps its answer.
-function redraw() {
-  const views = { home: homeView, weak: weakListView, question: questionView, result: resultView, settings: settingsView };
-  if (views[state.view]) views[state.view]();
-}
-
 function questionLabel(q) {
-  return '#' + q.no + (q.also ? ' (' + t('question.also', { numbers: q.also.join(', #') }) + ')' : '')
-    + (q.topic ? ' · ' + topicName(q.topic).replace(/\s*[(（].*[)）]$/, '') : '');
+  return live(() => '#' + q.no + (q.also ? ' (' + tr('question.also', { numbers: q.also.join(', #') }) + ')' : '')
+    + (q.topic ? ' · ' + bankName('topics', q.topic).replace(/\s*[(（].*[)）]$/, '') : ''));
 }
 
 // ---------- views ----------
@@ -654,7 +693,7 @@ function questionView() {
   function showFeedback() {
     const correct = chosen === q.answer;
     feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
-    feedback.textContent = correct ? t('q.correct') : t('q.wrong', { answer: optionLabel(q.answer) });
+    feedback.replaceChildren(liveText(correct ? t('q.correct') : t('q.wrong', { answer: optionLabel(q.answer) })));
   }
 
   function choose(value) {
@@ -664,13 +703,11 @@ function questionView() {
     store.set('myStats', state.myStats);
     sync.soon();
     s.results.push({ id: q.id, correct });
-    s.chosen = { idx: s.idx, value };
 
     if (s.exam) return next();
     showAnswer(value);
   }
 
-  // Mark the answer; also used when the question is drawn again after it was answered.
   function showAnswer(value) {
     answered = true;
     chosen = value;
@@ -690,7 +727,6 @@ function questionView() {
   }
 
   showText(lang);
-  if (s.chosen && s.chosen.idx === s.idx) showAnswer(s.chosen.value);
   render(h('div', { class: 'card' },
     h('div', { class: 'qmeta' },
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
@@ -745,7 +781,7 @@ function settingsView() {
   const status = h('p', { class: 'muted', id: 'sync-status' }, sync.lastMessage || '');
   // Sync, then redraw so the status and device list reflect the result.
   const syncNow = async () => {
-    status.textContent = t('sync.syncing');
+    status.replaceChildren(liveText(t('sync.syncing')));
     await sync.run();
     if (state.view === 'settings') settingsView();
   };
@@ -780,11 +816,11 @@ function settingsView() {
       mode && [h('label', { for: 'dname' }, t('settings.deviceName')), name],
       mode && status,
       mode && devices.length > 0 && h('p', { class: 'muted' }, t('settings.devices', {
-        list: devices.map(([id, d]) => t('settings.deviceEntry', {
+        list: live(() => devices.map(([id, d]) => tr('settings.deviceEntry', {
           name: d.name || id,
           self: id === state.deviceId ? t('settings.thisDevice') : '',
           count: Object.keys(d.stats || {}).length,
-        })).join(', '),
+        })).join(', ')),
       }))),
     available(PRIMARY_LANG) && h('div', { class: 'card' },
       h('h2', {}, t('settings.questionLanguages')),
@@ -843,12 +879,12 @@ function codeSettings(status, syncNow) {
         h('button', {
           class: 'btn',
           onclick: async e => {
-            try { await navigator.clipboard.writeText(pretty); e.target.textContent = t('code.copied'); } catch (err) { /* clipboard unavailable */ }
+            try { await navigator.clipboard.writeText(pretty); e.target.replaceChildren(liveText(t('code.copied'))); } catch (err) { /* clipboard unavailable */ }
           },
         }, t('code.copy')),
         navigator.share && h('button', {
           class: 'btn',
-          onclick: () => navigator.share({ text: shareText }).catch(() => {}),
+          onclick: () => navigator.share({ text: String(shareText) }).catch(() => {}),
         }, t('code.shareButton')),
         h('button', { class: 'btn primary', onclick: syncNow }, t('code.syncNow'))));
   }
@@ -873,7 +909,7 @@ function codeSettings(status, syncNow) {
         class: 'btn',
         onclick: async () => {
           const value = normaliseCode(input.value);
-          if (!value) { status.textContent = t('code.invalid'); return; }
+          if (!value) { status.replaceChildren(liveText(t('code.invalid'))); return; }
           sync.configure({ syncCode: value });
           await syncNow();
         },
@@ -897,7 +933,10 @@ function gistSettings() {
           if (value !== state.settings.token) sync.configure({ token: value, gistId: '' });
           await sync.run();
           const problem = tokenProblem(value);
-          if (problem && /failed/.test(sync.lastMessage)) sync.lastMessage += ' ' + problem;
+          if (problem && sync.lastKind === 'err') {
+            const failure = sync.lastMessage;
+            sync.lastMessage = live(() => failure + ' ' + problem);
+          }
           if (state.view === 'settings') settingsView();
         },
       }, t('gist.save'))));

@@ -81,8 +81,14 @@ entry, so devices never overwrite each other.
 
 - **Where the strings live:** interface text is in `app/i18n/<code>.json`, a flat map of keys
   to strings with `{name}` placeholders, for example `"sync.synced": "Synced {time}"`.
-- **Using them:** `t(key, vars)` in `app/app.js` returns the string in the current interface
-  language, falling back to English and then to the key itself.
+- **Using them:** `t(key, vars)` in `app/app.js` returns *live* text: it becomes the string in
+  the current interface language (falling back to English, then to the key itself) whenever it's
+  used.
+  - Elements built with `h()` remember the live text they show.
+  - Switching the language updates only that text in place (`refreshLive`), so the screen,
+    scroll position, typed input and answers stay as they are.
+  - Use `tr(key, vars)` when you need the plain string now, for example for stored values or
+    comparisons.
 - **Choosing the language:**
   - The interface language is chosen from the flag menu in the top bar, independently of the
     question languages. Flags are inline SVG (`FLAGS` in `app/app.js`), since Windows shows flag
