@@ -30,7 +30,7 @@ const state = {
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
-    questionLangs: null, // languages offered on each question; null = all available
+    secondLang: 'en', // language offered next to Chinese on each question
     questionLang: 'en', // language the next question opens in
   }, store.get('settings', {})),
   session: null,
@@ -63,14 +63,25 @@ function allStats() {
 
 // ---------- question text ----------
 // Question text lives in one file per language (data/text/<code>.json), keyed by question id.
-// English is the reference: always loaded, and the fallback when a question has no translation.
+// Each question can be switched between Chinese, the official language of the test, and one
+// second language chosen in settings. English, the reference edition of the extracted data,
+// is always loaded: the interface uses its section and topic names, and it is the fallback
+// for questions missing in the other languages.
 
 const REFERENCE_LANG = 'en';
+const PRIMARY_LANG = 'zh-Hant';
+
+function available(code) {
+  return state.languages.some(l => l.code === code);
+}
+
+function secondLang() {
+  const code = state.settings.secondLang;
+  return code !== PRIMARY_LANG && available(code) ? code : REFERENCE_LANG;
+}
 
 function enabledLangs() {
-  const all = state.languages.map(l => l.code);
-  const chosen = state.settings.questionLangs || all;
-  return all.filter(c => c === REFERENCE_LANG || chosen.includes(c));
+  return [PRIMARY_LANG, secondLang()].filter(available);
 }
 
 function textFor(q, lang) {
@@ -78,9 +89,10 @@ function textFor(q, lang) {
   return t && t.questions[q.id];
 }
 
-// The language a question is shown in: the wanted one if it has a translation, else English.
+// The language a question is shown in: the wanted one if it has a translation,
+// else the other enabled language, else English.
 function shownLang(q, lang) {
-  return textFor(q, lang) ? lang : REFERENCE_LANG;
+  return [lang].concat(enabledLangs(), REFERENCE_LANG).find(code => textFor(q, code));
 }
 
 function qText(q, lang) {
@@ -565,26 +577,25 @@ function settingsView() {
       mode && status,
       mode && devices.length > 0 && h('p', { class: 'muted' }, 'Devices: ' + devices.map(([id, d]) =>
         (d.name || id) + (id === state.deviceId ? ' (this)' : '') + ' – ' + Object.keys(d.stats || {}).length + ' answered').join(', '))),
-    state.languages.length > 1 && h('div', { class: 'card' },
+    available(PRIMARY_LANG) && h('div', { class: 'card' },
       h('h2', {}, 'Question languages'),
-      h('p', { class: 'muted' }, 'Languages you can switch each question to. Only these are downloaded for offline use. English is always available.'),
-      state.languages.map(l => h('label', { class: 'check' },
-        h('input', {
-          type: 'checkbox',
-          checked: enabledLangs().includes(l.code),
-          disabled: l.code === REFERENCE_LANG,
-          onchange: async e => {
-            const on = new Set(enabledLangs());
-            if (e.target.checked) on.add(l.code); else on.delete(l.code);
-            state.settings.questionLangs = [...on];
-            if (!on.has(state.settings.questionLang)) state.settings.questionLang = REFERENCE_LANG;
-            saveSettings();
-            if (e.target.checked && !(await loadText(l.code))) {
-              alert('Could not download ' + l.name + '. Check your connection and try again.');
-            }
-          },
-        }),
-        ' ' + l.name))),
+      h('p', { class: 'muted' }, 'Each question can be switched between 中文 and a second language. Both are downloaded for offline use.'),
+      h('label', { for: 'second-lang' }, 'Second language'),
+      h('select', {
+        id: 'second-lang',
+        onchange: async e => {
+          const code = e.target.value;
+          if (!(await loadText(code))) {
+            alert('Could not download ' + langLabel(code) + '. Check your connection and try again.');
+            e.target.value = secondLang();
+            return;
+          }
+          if (state.settings.questionLang === secondLang()) state.settings.questionLang = code;
+          state.settings.secondLang = code;
+          saveSettings();
+        },
+      }, state.languages.filter(l => l.code !== PRIMARY_LANG).map(l =>
+        h('option', { value: l.code, selected: l.code === secondLang() }, l.name)))),
     h('div', { class: 'card' },
       h('h2', {}, 'Data'),
       h('p', { class: 'muted' }, state.questions.length + ' questions loaded.'),
@@ -691,7 +702,7 @@ async function boot() {
     }
   } catch (e) { /* offline without cache, or missing file */ }
   if (!(await loadText(REFERENCE_LANG))) state.questions = [];
-  await Promise.all(enabledLangs().filter(c => c !== REFERENCE_LANG).map(loadText));
+  await Promise.all(enabledLangs().map(loadText));
   if (!enabledLangs().includes(state.settings.questionLang)) state.settings.questionLang = REFERENCE_LANG;
   state.questions.forEach(q => { state.byId[q.id] = q; });
   if (!state.questions.some(q => q.section === state.settings.section)) state.settings.section = '';

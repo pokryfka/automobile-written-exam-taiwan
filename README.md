@@ -35,10 +35,10 @@ sync your progress between devices.
   questions come up rarely, and a new mistake brings them back.
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
-- Switch any question and its answers between **English and Chinese (中文)** with the
-  **EN / 中文** toggle above it. The next question opens in the language you used last.
-  In ⚙️ → **Question languages** you choose which languages the toggle offers; only those are
-  downloaded for offline use. The rest of the app is in English.
+- Switch any question and its answers between **Chinese (中文)** and a second language with the
+  **中文 / EN** toggle above it. The next question opens in the language you used last.
+  Chinese is always available. The second language is English unless you pick another one in
+  ⚙️ → **Question languages** once more languages are added. The rest of the app is in English.
 
 ## Syncing between iPhone and iPad
 

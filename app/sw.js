@@ -1,7 +1,8 @@
 // Offline support: serve same-origin files from cache, refresh them in the background.
 const CACHE = 'car-exam-v3';
-// Other languages' text files are cached by the fetch handler when the app first loads them.
-const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/bank.json', 'data/text/en.json'];
+// English and Chinese text are always used; another second language is cached by the fetch
+// handler when the app first loads it.
+const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/bank.json', 'data/text/en.json', 'data/text/zh-Hant.json'];
 
 // Pre-cache the app and every question picture so practice works fully offline.
 self.addEventListener('install', e => {
