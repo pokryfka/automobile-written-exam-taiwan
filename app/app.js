@@ -626,7 +626,7 @@ function weakListView() {
   state.view = 'weak';
   const stats = allStats();
   const rows = pool()
-    .filter(q => stats[q.id] && stats[q.id].w > 0)
+    .filter(q => stats[q.id] && (stats[q.id].w > 0 || stats[q.id].u > 0))
     .map(q => ({ q, r: stats[q.id], score: Core.weakness(stats[q.id]) }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 50);
@@ -638,7 +638,7 @@ function weakListView() {
         h('table', { class: 'weak' }, rows.map(({ q, r }) => h('tr', {},
           h('td', {}, h('div', { class: 'muted' }, questionLabel(q)),
             (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })), qText(q).q),
-          h('td', { class: 'num' }, '✗' + r.w + ' ✓' + r.c)))),
+          h('td', { class: 'num' }, statLabel(r))))),
       ]
       : h('p', { class: 'muted' }, t('weak.none'))));
 }
@@ -646,6 +646,11 @@ function weakListView() {
 function startSession(ids, mode, exam) {
   state.session = { ids, idx: 0, mode, exam, results: [] };
   questionView();
+}
+
+// "✗2 ✓5", with "?1" when some right answers were marked unsure.
+function statLabel(r) {
+  return '✗' + r.w + ' ✓' + r.c + (r.u ? ' ?' + r.u : '');
 }
 
 function questionView() {
@@ -657,6 +662,7 @@ function questionView() {
 
   let lang = shownLang(q, state.settings.questionLang);
   let chosen = null;
+  let unsure = false; // marked before answering; each question starts unmarked
 
   const feedback = h('div', { class: 'feedback' });
   const actions = h('div', { class: 'actions' });
@@ -669,6 +675,16 @@ function questionView() {
   const buttons = choices.map((ch, i) => h('button', { onclick: () => choose(ch.value) },
     labels[i],
     q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: t('q.option', { n: i + 1 }) })));
+
+  const unsureButton = h('button', {
+    class: 'unsure-toggle',
+    'aria-pressed': 'false',
+    onclick: () => {
+      unsure = !unsure;
+      unsureButton.classList.toggle('on', unsure);
+      unsureButton.setAttribute('aria-pressed', String(unsure));
+    },
+  }, t('q.unsure'));
 
   // Switch this question between languages; the choice becomes the default for the next question.
   const langs = enabledLangs();
@@ -699,13 +715,13 @@ function questionView() {
   function showFeedback() {
     const correct = chosen === q.answer;
     feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
-    feedback.replaceChildren(liveText(correct ? t('q.correct') : t('q.wrong', { answer: optionLabel(q.answer) })));
+    feedback.replaceChildren(liveText(correct ? t(unsure ? 'q.correctUnsure' : 'q.correct') : t('q.wrong', { answer: optionLabel(q.answer) })));
   }
 
   function choose(value) {
     if (answered) return;
     const correct = value === q.answer;
-    Core.recordAnswer(state.myStats, q.id, correct, Date.now());
+    Core.recordAnswer(state.myStats, q.id, correct, Date.now(), unsure);
     store.set('myStats', state.myStats);
     sync.soon();
     s.results.push({ id: q.id, correct });
@@ -717,6 +733,7 @@ function questionView() {
   function showAnswer(value) {
     answered = true;
     chosen = value;
+    unsureButton.disabled = true;
     choices.forEach((ch, i) => {
       buttons[i].disabled = true;
       if (ch.value === q.answer) buttons[i].classList.add('correct');
@@ -737,11 +754,12 @@ function questionView() {
     h('div', { class: 'qmeta' },
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
       toggle,
-      h('span', {}, r ? '✗' + r.w + ' ✓' + r.c : t('q.new'))),
+      h('span', {}, r ? statLabel(r) : t('q.new'))),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
     (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: t('q.illustration') })),
     stem,
     h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
+    h('div', { class: 'unsure-row' }, unsureButton),
     feedback,
     actions));
 }

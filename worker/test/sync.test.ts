@@ -52,6 +52,16 @@ describe('sync API', () => {
     expect(bad.status).toBe(400);
   });
 
+  it('keeps unsure counts and history, and accepts records without them', async () => {
+    const withUnsure = { q1: { c: 2, w: 1, u: 1, h: '102', t: 1 }, q2: { c: 1, w: 0, h: '1', t: 1 } };
+    const res = await put('ABCDEFGHJKMZ', 'dev1', { stats: withUnsure });
+    expect(res.status).toBe(200);
+    const { devices } = await res.json<{ devices: Record<string, { stats: unknown }> }>();
+    expect(devices.dev1.stats).toEqual(withUnsure);
+    expect((await put('ABCDEFGHJKMZ', 'dev1', { stats: { q: { c: 1, w: 0, u: -1, h: '2', t: 0 } } })).status).toBe(400);
+    expect((await put('ABCDEFGHJKMZ', 'dev1', { stats: { q: { c: 1, w: 0, h: '3', t: 0 } } })).status).toBe(400);
+  });
+
   it('stores language preferences per device', async () => {
     const prefs = { uiLang: 'zh-Hant', secondLang: 'en', questionLang: 'zh-Hant', updated: 1700000000000 };
     await put('ABCDEFGHJKMW', 'dev1', { stats, prefs });

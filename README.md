@@ -28,15 +28,19 @@ Pick a mode on the home screen:
 | Mode | What it does |
 |---|---|
 | 🎯 **Smart** | Mostly questions you got wrong before (the hardest ones come up most often), plus new ones |
-| 🔥 **Mistakes** | Only questions you got wrong and haven't mastered yet |
+| 🔥 **Mistakes** | Only questions you got wrong or were unsure about, and haven't mastered yet |
 | 🆕 **New** | Questions you have never answered |
 | 🎲 **Random** | Any question |
 | 📝 **Mock exam** | 40 random questions from the whole bank, 85 points to pass |
-| 📊 **Weak list** | Your 50 most-missed questions, with a button to practise them |
+| 📊 **Weak list** | Your 50 weakest questions, with a button to practise them |
 
 - After each answer you see whether you were right, and the correct answer is highlighted.
-- A question counts as **mastered** once you have answered it correctly 3 times in a row.
-  Mastered questions come up rarely, and a new mistake brings them back.
+- Not sure of an answer? Tap **? Unsure** before you answer. If you're right, it counts as
+  correct, but the question stays on your review list until you know it. Each question starts
+  unmarked.
+- A question counts as **mastered** once you have answered it correctly, without marking it
+  unsure, 3 times in a row. Mastered questions come up rarely, and a new mistake or unsure
+  answer brings them back.
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
 - Choose how many questions a session has: 10, 20, 40 or 80.
@@ -94,7 +98,7 @@ down:** if you lose it, nobody can look it up for you.
 - The app has no accounts, ads or analytics.
 - **Without sync**, your progress stays on your device.
 - **With sync**, only your practice results are stored: for each question, how often you got
-  it right or wrong, your last 5 answers and when you last answered it, plus the device names
+  it right, wrong or right but unsure, your last 5 answers and when you last answered it, plus the device names
   and language choices you make. Nothing else about you is stored.
 - The server keeps your results under a scrambled form of your sync code, not the code itself.
 
