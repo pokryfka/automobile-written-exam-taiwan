@@ -26,7 +26,13 @@ const state = {
   deviceId: store.get('deviceId', null),
   myStats: store.get('myStats', {}),
   remoteDoc: store.get('remoteDoc', { version: 1, devices: {} }),
-  settings: Object.assign({ syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20 }, store.get('settings', {})),
+  languages: [], // [{ code, name }] from bank.json; the first is the reference (English)
+  text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
+  settings: Object.assign({
+    syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
+    questionLangs: null, // languages offered on each question; null = all available
+    questionLang: 'en', // language the next question opens in
+  }, store.get('settings', {})),
   session: null,
 };
 
@@ -53,6 +59,61 @@ function allStats() {
   const devices = Object.assign({}, state.remoteDoc.devices);
   devices[state.deviceId] = { stats: state.myStats };
   return Core.mergeDevices(devices);
+}
+
+// ---------- question text ----------
+// Question text lives in one file per language (data/text/<code>.json), keyed by question id.
+// English is the reference: always loaded, and the fallback when a question has no translation.
+
+const REFERENCE_LANG = 'en';
+
+function enabledLangs() {
+  const all = state.languages.map(l => l.code);
+  const chosen = state.settings.questionLangs || all;
+  return all.filter(c => c === REFERENCE_LANG || chosen.includes(c));
+}
+
+function textFor(q, lang) {
+  const t = state.text[lang];
+  return t && t.questions[q.id];
+}
+
+// The language a question is shown in: the wanted one if it has a translation, else English.
+function shownLang(q, lang) {
+  return textFor(q, lang) ? lang : REFERENCE_LANG;
+}
+
+function qText(q, lang) {
+  return textFor(q, shownLang(q, lang || state.settings.questionLang));
+}
+
+function langLabel(code) {
+  if (code === REFERENCE_LANG) return 'EN';
+  const l = state.languages.find(x => x.code === code);
+  return l ? l.name : code;
+}
+
+// Section and topic names follow the interface, which is English only.
+function sectionName(key) {
+  const t = state.text[REFERENCE_LANG];
+  return (t && t.sections[key]) || key;
+}
+
+function topicName(key) {
+  const t = state.text[REFERENCE_LANG];
+  return (t && t.topics[key]) || key;
+}
+
+async function loadText(code) {
+  if (state.text[code]) return true;
+  try {
+    const res = await fetch('data/text/' + code + '.json');
+    if (!res.ok) return false;
+    state.text[code] = await res.json();
+    return true;
+  } catch (e) {
+    return false; // offline and not cached yet
+  }
 }
 
 function pool() {
@@ -232,7 +293,7 @@ function render(...nodes) {
 }
 
 function questionLabel(q) {
-  return '#' + q.no + (q.also ? ' (also #' + q.also.join(', #') + ')' : '') + (q.topic ? ' · ' + q.topic.replace(/\s*\(.*\)$/, '') : '');
+  return '#' + q.no + (q.also ? ' (also #' + q.also.join(', #') + ')' : '') + (q.topic ? ' · ' + topicName(q.topic).replace(/\s*\(.*\)$/, '') : '');
 }
 
 // ---------- views ----------
@@ -242,7 +303,7 @@ function homeView() {
   if (!state.questions.length) {
     return render(h('div', { class: 'card' },
       h('h2', {}, 'No question bank loaded'),
-      h('p', {}, 'app/data/questions.json is missing or empty. Run tools/extract_questions.py on the official PDF (see README).')));
+      h('p', {}, 'app/data/bank.json is missing or empty. Run tools/extract_questions.py on the official PDF (see README).')));
   }
   const stats = allStats();
   const qs = pool();
@@ -293,13 +354,13 @@ function homeView() {
         id: 'section',
         onchange: e => { state.settings.section = e.target.value; state.settings.topic = ''; saveSettings(); homeView(); },
       }, h('option', { value: '' }, 'All sections'),
-      sections.map(c => h('option', { value: c, selected: c === state.settings.section }, c))),
+      sections.map(c => h('option', { value: c, selected: c === state.settings.section }, sectionName(c)))),
       h('label', { for: 'topic' }, 'Topic'),
       h('select', {
         id: 'topic',
         onchange: e => { state.settings.topic = e.target.value; saveSettings(); homeView(); },
       }, h('option', { value: '' }, 'All topics'),
-      topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, c))),
+      topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, topicName(c)))),
       h('p', { class: 'muted' }, 'Section and topic apply to practice modes; the mock exam always uses the whole bank.')),
     !sync.backend() && h('div', { class: 'card' },
       h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between iPhone and iPad.')),
@@ -321,7 +382,7 @@ function weakListView() {
         h('button', { class: 'btn primary', style: 'width:100%;margin-bottom:10px', onclick: () => startSession(rows.slice(0, state.settings.length).map(x => x.q.id), 'weak', false) }, 'Practice these'),
         h('table', { class: 'weak' }, rows.map(({ q, r }) => h('tr', {},
           h('td', {}, h('div', { class: 'muted' }, questionLabel(q)),
-            (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })), q.q),
+            (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })), qText(q).q),
           h('td', { class: 'num' }, '✗' + r.w + ' ✓' + r.c)))),
       ]
       : h('p', { class: 'muted' }, 'No mistakes recorded yet.')));
@@ -339,18 +400,57 @@ function questionView() {
   const r = allStats()[q.id];
   let answered = false;
 
+  let lang = shownLang(q, state.settings.questionLang);
+  let chosen = null;
+
   const feedback = h('div', { class: 'feedback' });
   const actions = h('div', { class: 'actions' });
+  const stem = h('p', { class: 'qtext' });
+  const labels = [0, 1, 2].map(() => h('span', {}));
 
-  const choices = q.options.map((o, i) => ({ label: '(' + (i + 1) + ') ' + o, value: i }));
+  const choices = [0, 1, 2].map(i => ({ value: i }));
+  const optionLabel = i => '(' + (i + 1) + ') ' + textFor(q, lang).options[i];
 
   const buttons = choices.map((ch, i) => h('button', { onclick: () => choose(ch.value) },
-    ch.label,
+    labels[i],
     q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: 'Option ' + (i + 1) })));
+
+  // Switch this question between languages; the choice becomes the default for the next question.
+  const langs = enabledLangs();
+  const toggle = langs.length > 1 && h('div', { class: 'lang-toggle', role: 'group', 'aria-label': 'Question language' },
+    langs.map(code => {
+      const available = !!textFor(q, code);
+      return h('button', {
+        'data-lang': code,
+        disabled: !available,
+        title: available ? '' : 'This question is not available in ' + langLabel(code),
+        onclick: () => {
+          state.settings.questionLang = code;
+          saveSettings();
+          showText(code);
+        },
+      }, langLabel(code));
+    }));
+
+  function showText(code) {
+    lang = shownLang(q, code);
+    stem.textContent = textFor(q, lang).q;
+    stem.lang = lang;
+    labels.forEach((el, i) => { el.textContent = optionLabel(i); el.lang = lang; });
+    if (toggle) toggle.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+    if (chosen !== null) showFeedback();
+  }
+
+  function showFeedback() {
+    const correct = chosen === q.answer;
+    feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
+    feedback.textContent = correct ? '✓ Correct' : '✗ Wrong: answer is ' + optionLabel(q.answer);
+  }
 
   function choose(value) {
     if (answered) return;
     answered = true;
+    chosen = value;
     const correct = value === q.answer;
     Core.recordAnswer(state.myStats, q.id, correct, Date.now());
     store.set('myStats', state.myStats);
@@ -364,8 +464,7 @@ function questionView() {
       if (ch.value === q.answer) buttons[i].classList.add('correct');
       else if (ch.value === value) buttons[i].classList.add('wrong');
     });
-    feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
-    feedback.textContent = correct ? '✓ Correct' : '✗ Wrong: answer is ' + choices.find(c => c.value === q.answer).label;
+    showFeedback();
     actions.append(h('button', { class: 'btn primary', onclick: next }, s.idx + 1 < s.ids.length ? 'Next →' : 'Finish'));
   }
 
@@ -375,13 +474,15 @@ function questionView() {
     else resultView();
   }
 
+  showText(lang);
   render(h('div', { class: 'card' },
     h('div', { class: 'qmeta' },
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
+      toggle,
       h('span', {}, r ? '✗' + r.w + ' ✓' + r.c : 'new')),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
     (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: 'Question illustration' })),
-    h('p', { class: 'qtext' }, q.q),
+    stem,
     h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
     feedback,
     actions));
@@ -401,11 +502,12 @@ function resultView() {
     s.exam && h('p', { style: 'text-align:center' }, score >= EXAM_PASS ? 'Pass 🎉' : 'Below ' + EXAM_PASS + ', keep practising'),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
+      const t = qText(q);
       return h('tr', {}, h('td', {},
         h('div', { class: 'muted' }, questionLabel(q)),
         (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })),
-        q.q,
-        h('div', { class: 'muted' }, 'Answer: (' + (q.answer + 1) + ') ' + q.options[q.answer]),
+        t.q,
+        h('div', { class: 'muted' }, 'Answer: (' + (q.answer + 1) + ') ' + t.options[q.answer]),
         q.optionImages && h('img', { class: 'thumb', src: 'data/' + q.optionImages[q.answer], alt: 'Correct option' })));
     })),
     h('div', { class: 'actions' },
@@ -463,6 +565,26 @@ function settingsView() {
       mode && status,
       mode && devices.length > 0 && h('p', { class: 'muted' }, 'Devices: ' + devices.map(([id, d]) =>
         (d.name || id) + (id === state.deviceId ? ' (this)' : '') + ' – ' + Object.keys(d.stats || {}).length + ' answered').join(', '))),
+    state.languages.length > 1 && h('div', { class: 'card' },
+      h('h2', {}, 'Question languages'),
+      h('p', { class: 'muted' }, 'Languages you can switch each question to. Only these are downloaded for offline use. English is always available.'),
+      state.languages.map(l => h('label', { class: 'check' },
+        h('input', {
+          type: 'checkbox',
+          checked: enabledLangs().includes(l.code),
+          disabled: l.code === REFERENCE_LANG,
+          onchange: async e => {
+            const on = new Set(enabledLangs());
+            if (e.target.checked) on.add(l.code); else on.delete(l.code);
+            state.settings.questionLangs = [...on];
+            if (!on.has(state.settings.questionLang)) state.settings.questionLang = REFERENCE_LANG;
+            saveSettings();
+            if (e.target.checked && !(await loadText(l.code))) {
+              alert('Could not download ' + l.name + '. Check your connection and try again.');
+            }
+          },
+        }),
+        ' ' + l.name))),
     h('div', { class: 'card' },
       h('h2', {}, 'Data'),
       h('p', { class: 'muted' }, state.questions.length + ' questions loaded.'),
@@ -561,9 +683,16 @@ document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () =>
 
 async function boot() {
   try {
-    const res = await fetch('data/questions.json');
-    if (res.ok) state.questions = (await res.json()).questions || [];
+    const res = await fetch('data/bank.json');
+    if (res.ok) {
+      const bank = await res.json();
+      state.questions = bank.questions || [];
+      state.languages = bank.languages || [];
+    }
   } catch (e) { /* offline without cache, or missing file */ }
+  if (!(await loadText(REFERENCE_LANG))) state.questions = [];
+  await Promise.all(enabledLangs().filter(c => c !== REFERENCE_LANG).map(loadText));
+  if (!enabledLangs().includes(state.settings.questionLang)) state.settings.questionLang = REFERENCE_LANG;
   state.questions.forEach(q => { state.byId[q.id] = q; });
   if (!state.questions.some(q => q.section === state.settings.section)) state.settings.section = '';
   if (!state.questions.some(q => q.topic === state.settings.topic)) state.settings.topic = '';
