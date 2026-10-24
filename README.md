@@ -129,6 +129,12 @@ Found a wrong answer, a typo or a bug? Please
 This is an unofficial study aid, not affiliated with the Highway Bureau. Always check the
 latest official question bank and rules before your test.
 
+## License
+
+The app's code is available under the [MIT License](LICENSE). The questions, answers and
+pictures come from the Highway Bureau's official question bank and are not covered by that
+license.
+
 ---
 
 For developers: see [DEVELOPMENT.md](DEVELOPMENT.md) for how the app is built, tested and

@@ -14,5 +14,6 @@
     "typescript": "5.9.3",
     "vitest": "4.1.12",
     "wrangler": "4.149.0"
-  }
+  },
+  "license": "MIT"
 }
