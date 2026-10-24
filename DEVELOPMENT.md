@@ -32,7 +32,8 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 | Path | Contents |
 |---|---|
 | `app/index.html`, `app/styles.css` | Page and styles |
-| `app/app.js` | Screens, local storage, question languages and both sync methods |
+| `app/app.js` | Screens, local storage, interface and question languages, and both sync methods |
+| `app/i18n/` | Interface translations, one file per language |
 | `app/core.js` | Stats merging and question selection (also used by the tests) |
 | `app/sw.js` | Service worker that caches the app, question text and all pictures for offline use |
 | `app/data/` | Extracted questions and pictures (see below) |
@@ -51,17 +52,23 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 - Stats from all devices are summed for display.
 
 **Shared document format:** both sync methods use the same document,
-`{ devices: { [deviceId]: { name, updated, stats } } }`. Each device writes only its own
+`{ devices: { [deviceId]: { name, updated, stats, prefs } } }`. Each device writes only its own
 entry, so devices never overwrite each other.
+
+**Language choices (`prefs`):**
+- `prefs` holds `{ uiLang, secondLang, questionLang, updated }`, where `updated` is when this
+  device's choices last changed.
+- After each sync the app applies the most recently updated `prefs` from any other device, if
+  they're newer than its own.
 
 **Sync code:** handled by the Worker's API.
 - `GET /api/sync/:code` returns all devices' entries for a code.
-- `PUT /api/sync/:code/:deviceId` with `{ name, stats }` saves one device's entry and returns
-  all of them.
+- `PUT /api/sync/:code/:deviceId` with `{ name, stats, prefs }` saves one device's entry and
+  returns all of them. `prefs` is optional, so older versions of the app keep working.
 - A code is 12 Crockford base32 characters (60 random bits) generated in the app. Lower case,
   dashes, spaces, O→0 and I/L→1 are accepted.
 - The database stores the code's SHA-256 only. Each device is one row, keyed by
-  `(code_hash, device_id)`.
+  `(code_hash, device_id)`. The `prefs` column was added by migration `0002`.
 - Requests are validated and limited: a body size limit, a maximum number of devices per code,
   and a per-IP rate limit (see [Deployment](#deployment)).
 
@@ -69,6 +76,37 @@ entry, so devices never overwrite each other.
 - The app stores the same document in a private gist named `taiwan-car-exam-stats.json`, using
   the GitHub API with the user's token.
 - The token is stored only in the device's `localStorage`.
+
+## Interface translations
+
+- **Where the strings live:** interface text is in `app/i18n/<code>.json`, a flat map of keys
+  to strings with `{name}` placeholders, for example `"sync.synced": "Synced {time}"`.
+- **Using them:** `t(key, vars)` in `app/app.js` returns *live* text: it becomes the string in
+  the current interface language (falling back to English, then to the key itself) whenever it's
+  used.
+  - Elements built with `h()` remember the live text they show.
+  - Switching the language updates only that text in place (`refreshLive`), so the screen,
+    scroll position, typed input and answers stay as they are.
+  - Use `tr(key, vars)` when you need the plain string now, for example for stored values or
+    comparisons.
+- **Choosing the language:**
+  - The interface language is chosen from the flag menu in the top bar, independently of the
+    question languages. Flags are inline SVG (`FLAGS` in `app/app.js`), since Windows shows flag
+    emoji as letters.
+  - The default is English.
+  - The choice is synced between devices (see [Stats and sync](#stats-and-sync)).
+- **Section and topic names** follow the interface language when the question bank has them
+  in that language, otherwise English.
+- **Offline:** the service worker precaches the English and Chinese string files.
+- **Tests:** `tests/i18n.test.js` checks that every language file has the same keys and
+  placeholders as `en.json`, and that every key the app uses exists.
+
+To add an interface language:
+1. Copy `app/i18n/en.json` to `app/i18n/<code>.json` and translate the values, keeping the keys
+   and placeholders.
+2. Add the language to `UI_LANGS` in `app/app.js`, with its own name, its locale for
+   formatting times, and a flag (add the flag's SVG to `FLAGS` if it's new).
+3. Add the file to `SHELL` in `app/sw.js` if it should work offline from the first visit.
 
 ## Question data
 
