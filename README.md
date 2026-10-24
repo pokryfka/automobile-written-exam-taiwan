@@ -45,6 +45,10 @@ Pick a mode on the home screen:
   the practice modes but not to the mock exam.
 - Choose how many questions a session has: 10, 20, 40 or 80.
 
+**Official practice test:** the Highway Bureau also runs its own online practice tests for cars
+and motorcycles, [交通部公路局汽機車線上隨機模擬考系統](https://www.mvdis.gov.tw/m3-simulator-drv/index).
+There's a link to it at the bottom of the home screen.
+
 > **The test has changed.** Since 30 June 2026 (民國115年6月30日) the real test has 50
 > questions, including 5 hazard-perception video questions. The mock exam still uses the
 > previous format.

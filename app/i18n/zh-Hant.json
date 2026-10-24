@@ -49,6 +49,9 @@
   "home.allTopics": "所有分類",
   "home.filtersHint": "架構與分類只套用於練習模式，模擬考一律從整個題庫出題。",
   "home.noSync": "作答紀錄只存在這台裝置。可到 ⚙️ 設定同步，在你的各個裝置間共用。",
+  "home.official": "官方模擬考",
+  "home.officialHelp": "交通部公路局汽機車線上隨機模擬考系統，提供汽車與機車筆試的線上模擬考。",
+  "home.officialOpen": "前往官方模擬考 ↗",
   "home.noWeak": "目前還沒有答錯或不確定的題目，很好！",
   "home.nothingLeft": "此模式已沒有題目。",
 

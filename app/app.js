@@ -5,6 +5,8 @@ const STATS_FILE = 'taiwan-car-exam-stats.json';
 const EXAM_SIZE = 40;
 const REPO_URL = 'https://github.com/pokryfka/car-exam-tw';
 const SUPPORT_URL = REPO_URL + '/issues';
+// The Highway Bureau's own online mock exam for cars and motorcycles.
+const OFFICIAL_PRACTICE_URL = 'https://www.mvdis.gov.tw/m3-simulator-drv/index';
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
@@ -617,6 +619,10 @@ function homeView() {
       }, h('option', { value: '' }, t('home.allTopics')),
       topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, topicName(c)))),
       h('p', { class: 'muted' }, t('home.filtersHint'))),
+    h('div', { class: 'card' },
+      h('h2', {}, t('home.official')),
+      h('p', { class: 'muted' }, t('home.officialHelp')),
+      h('a', { class: 'btn link-btn', href: OFFICIAL_PRACTICE_URL, target: '_blank', rel: 'noopener' }, t('home.officialOpen'))),
     !sync.backend() && h('div', { class: 'card' },
       h('p', { class: 'muted' }, t('home.noSync'))),
   );
