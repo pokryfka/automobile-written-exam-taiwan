@@ -1,12 +1,14 @@
 // Offline support: serve same-origin files from cache, refresh them in the background.
-const CACHE = 'car-exam-v2';
-const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/questions.json'];
+const CACHE = 'car-exam-v3';
+// English and Chinese text are always used; another second language is cached by the fetch
+// handler when the app first loads it.
+const SHELL = ['./', 'index.html', 'styles.css', 'core.js', 'app.js', 'manifest.webmanifest', 'data/bank.json', 'data/text/en.json', 'data/text/zh-Hant.json'];
 
 // Pre-cache the app and every question picture so practice works fully offline.
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(async c => {
     await c.addAll(SHELL);
-    const { questions } = await (await c.match('data/questions.json')).json();
+    const { questions } = await (await c.match('data/bank.json')).json();
     const pics = new Set(questions.flatMap(q => (q.images || []).concat(q.optionImages || [])).map(p => 'data/' + p));
     await c.addAll([...pics]);
   }).then(() => self.skipWaiting()));

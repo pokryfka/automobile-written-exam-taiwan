@@ -98,7 +98,11 @@ select, input[type=text], input[type=password] {
 .mono { font-family: ui-monospace, Menlo, monospace; font-size: 13px; }
 label { display: block; margin: 10px 0 4px; font-size: 14px; color: var(--muted); }
 
-.qmeta { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; margin-bottom: 8px; }
+.qmeta { display: flex; justify-content: space-between; color: var(--muted); font-size: 14px; margin-bottom: 8px; align-items: center; gap: 8px; }
+.lang-toggle { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+.lang-toggle button { font: inherit; font-size: 14px; border: 0; background: none; color: var(--muted); padding: 4px 12px; min-height: 32px; cursor: pointer; }
+.lang-toggle button.on { background: var(--accent); color: var(--accent-text); }
+.lang-toggle button:disabled { opacity: .35; cursor: default; }
 .qtext { font-size: 19px; margin: 0 0 14px; white-space: pre-wrap; }
 .qimg { display: inline-block; max-width: 100%; max-height: 200px; margin: 0 6px 14px 0; border-radius: 8px; background: #fff; }
 
@@ -129,6 +133,11 @@ label { display: block; margin: 10px 0 4px; font-size: 14px; color: var(--muted)
 table.weak { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.weak td { padding: 8px 4px; border-top: 1px solid var(--border); vertical-align: top; }
 table.weak td.num { text-align: right; white-space: nowrap; color: var(--bad); }
+
+table.editions { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 8px; }
+table.editions th, table.editions td { padding: 8px 4px; border-top: 1px solid var(--border); text-align: left; vertical-align: top; }
+table.editions td.muted { text-align: right; white-space: nowrap; }
+a { color: var(--accent); }
 
 .result-score { font-size: 48px; font-weight: 700; text-align: center; margin: 8px 0; }
 .pass { color: var(--good); }

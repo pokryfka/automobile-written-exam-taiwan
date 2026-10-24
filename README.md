@@ -35,6 +35,10 @@ sync your progress between devices.
   questions come up rarely, and a new mistake brings them back.
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
+- Switch any question and its answers between **Chinese (中文)** and a second language with the
+  **中文 / EN** toggle above it. The next question opens in the language you used last.
+  Chinese is always available. The second language is English unless you pick another one in
+  ⚙️ → **Question languages** once more languages are added. The rest of the app is in English.
 
 ## Syncing between iPhone and iPad
 
@@ -82,22 +86,45 @@ create a new one and paste it on each device; your stats stay in the gist.
 
 ## Updating the question bank
 
-The questions come from the official PDF published by the Highway Bureau (公路局), MOTC.
-When a new edition comes out:
+The questions come from the official PDFs published by the Highway Bureau (公路局), MOTC, on its
+[car question bank page](https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823). Extract the
+English edition first, since it defines the question ids, answers and pictures, then each further
+language:
 
 ```sh
 pip install pdfplumber
-python3 tools/extract_questions.py path/to/question-bank.pdf
+python3 tools/extract_questions.py --lang en      english.pdf
+python3 tools/extract_questions.py --lang zh-Hant chinese.pdf
 ```
 
-This rewrites `app/data/questions.json` and `app/data/images/`. The script checks that every
-question number is present and that each question has three options and an answer, and
-exits with a list of problems if not. Use `--debug <page>` to see how it reads one page.
+| File | Contents |
+|---|---|
+| `app/data/bank.json` | Language-neutral: id, number, answer, section and topic keys, pictures, list of languages |
+| `app/data/text/<lang>.json` | Question and option text plus section and topic names, keyed by question id |
+| `app/data/images/` | Pictures, taken from the English edition and shared by all languages |
 
-- Each question's id is a hash of its text and pictures, so your stats carry over to a new
+Rules the script follows:
+- **Question ids** are a hash of the English text and pictures, so your stats carry over to a new
   edition for every question that did not change.
-- Questions that appear twice in the bank are merged into one, and the extra number is
-  listed in `also`.
+- **Other languages** are matched to English by question number, and the script stops if any
+  number is missing, or if an answer or the number of pictures differs.
+- **Mismatched questions:** some numbers hold a different question in different editions.
+  These are listed in `MISMATCHED` in the script after comparing all questions by hand, and are
+  shown in English only. For the Chinese edition 115.5.29 that is #52, #164, #913 and #1036.
+- **Duplicates:** questions that appear twice in the bank are merged into one, and the extra
+  number is listed in `also`.
+
+To add another language, such as Japanese (`ja`) or Indonesian (`id`):
+1. Run the script with that code.
+2. Compare the questions with English and list any mismatches in `MISMATCHED`.
+3. Check that the language's name is in `LANGUAGE_NAMES`.
+
+**Editions:**
+- The script reads each language's edition from its PDF ("Year 115 edition, announced June 2026", "115.5.29").
+- It records the edition with the question count in `bank.json`, and the app shows them in ⚙️ → Data.
+- If the edition can't be found, pass it with `--edition`.
+
+Use `--debug <page>` to see how the script reads one page.
 
 ## Development
 
@@ -125,8 +152,8 @@ npm run typecheck
 | `worker/test/` | Worker tests, run inside the Workers runtime with a local D1 database |
 | `migrations/` | D1 schema migrations |
 | `wrangler.jsonc` | Worker configuration for production and QA |
-| `tools/extract_questions.py` | PDF → `questions.json` extractor |
-| `tests/` | Unit tests for `app/core.js` |
+| `tools/extract_questions.py` | PDF → `bank.json` and `text/<lang>.json` extractor |
+| `tests/` | Unit tests for `app/core.js` and consistency checks for `app/data/` |
 
 After changing `wrangler.jsonc`, run `npm run types` to regenerate
 `worker/worker-configuration.d.ts`.
