@@ -215,7 +215,7 @@ Pull requests from forks run the tests only.
 
 ## Versions
 
-⚙️ → Data shows the version the app is running. A release version links to its release notes
+⚙️ → Support shows the version the app is running. A release version links to its release notes
 on GitHub, and the commit id links to the commit:
 
 | Deployed from | Shown |

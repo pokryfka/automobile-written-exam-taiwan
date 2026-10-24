@@ -856,7 +856,6 @@ function settingsView() {
         h('th', {}, langName(l.code)),
         h('td', {}, l.edition || t('settings.unknownEdition'), l.date && h('div', { class: 'muted' }, l.date)),
         h('td', { class: 'muted' }, t('settings.questionCount', { count: l.questions || 0 }))))),
-      versionLine(),
       h('div', { class: 'actions' },
         h('button', {
           class: 'btn',
@@ -871,7 +870,8 @@ function settingsView() {
     h('div', { class: 'card' },
       h('h2', {}, t('settings.support')),
       h('p', { class: 'muted' }, t('settings.supportHelp')),
-      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport'))));
+      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport')),
+      versionLine()));
 }
 
 function codeSettings(status, syncNow) {
