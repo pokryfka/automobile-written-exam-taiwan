@@ -211,8 +211,3 @@ Pull requests from forks run the tests only.
 5. Put your own domains in `routes`, or remove `routes` to use only `workers.dev`. A custom
    domain must be a zone in the same Cloudflare account.
 6. Update the environment URLs in `.github/workflows/deploy.yml` to match.
-
-## Earlier version
-
-Version 1.0.0 (Gist sync only, hosted on GitHub Pages) is still available at
-https://pokryfka.github.io/car-exam-tw/ but is no longer updated.
