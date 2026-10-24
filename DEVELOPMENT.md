@@ -215,12 +215,12 @@ Pull requests from forks run the tests only.
 
 ## Versions
 
-⚙️ → Support shows the version the app is running. A release version links to its release notes
-on GitHub, and the commit id links to the commit:
+⚙️ → Support shows the version the app is running. A release links to its release notes on
+GitHub. Any other version shows its commit id, linking to the commit:
 
 | Deployed from | Shown |
 |---|---|
-| A release tag, such as `v2.0.0` | `Version v2.0.0 (b853c34)` |
+| A release tag, such as `v2.0.0` | `Version v2.0.0` |
 | 3 commits after that tag | `Version v2.0.0+3 (1a2b3c4)` |
 | A pull request, on QA | `Version v2.0.0+4 (9f8e7d6) · QA` |
 | `npm run dev` | `Version dev` |
