@@ -538,7 +538,7 @@ function h(tag, attrs, ...children) {
 }
 
 function render(...nodes) {
-  view.replaceChildren(...nodes);
+  view.replaceChildren(...nodes.filter(n => n != null && n !== false));
   liveNodes = liveNodes.filter(e => e.node.isConnected);
   window.scrollTo(0, 0);
 }
