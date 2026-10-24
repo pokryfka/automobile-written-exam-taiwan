@@ -85,6 +85,13 @@ describe('sync API', () => {
     expect((await exports.default.fetch(new Request('https://example.com/api/other'))).status).toBe(404);
   });
 
+  it('reports the features of this deployment', async () => {
+    const res = await exports.default.fetch(new Request('https://example.com/api/config'));
+    expect(res.status).toBe(200);
+    // The tests run with the top-level (production) settings.
+    expect(await res.json()).toEqual({ environment: 'production', gistSync: false });
+  });
+
   it('serves the app for other paths', async () => {
     const res = await exports.default.fetch(new Request('https://example.com/index.html'));
     expect(res.status).toBe(200);

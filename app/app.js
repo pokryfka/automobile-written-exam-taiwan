@@ -27,6 +27,9 @@ const state = {
   deviceId: store.get('deviceId', null),
   myStats: store.get('myStats', {}),
   remoteDoc: store.get('remoteDoc', { version: 1, devices: {} }),
+  // Features of this deployment from /api/config, kept for offline use. Gist sync is offered
+  // only where enabled (QA), but a device already using it keeps it.
+  config: store.get('config', { gistSync: false }),
   languages: [], // [{ code, name }] from bank.json; the first is the reference (English)
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
@@ -805,7 +808,7 @@ function settingsView() {
   },
   h('option', { value: '', selected: !mode }, t('settings.syncOff')),
   h('option', { value: 'code', selected: mode === 'code' }, t('settings.syncCode')),
-  h('option', { value: 'gist', selected: mode === 'gist' }, t('settings.syncGist')));
+  (state.config.gistSync || mode === 'gist') && h('option', { value: 'gist', selected: mode === 'gist' }, t('settings.syncGist')));
 
   render(
     h('div', { class: 'card' },
@@ -949,8 +952,17 @@ document.querySelectorAll('.nav[data-view]').forEach(b => b.addEventListener('cl
 
 // ---------- boot ----------
 
+async function loadConfig() {
+  try {
+    const res = await fetch('api/config', { cache: 'no-store' });
+    if (!res.ok) return;
+    state.config = await res.json();
+    store.set('config', state.config);
+  } catch (e) { /* offline: keep the last known config */ }
+}
+
 async function boot() {
-  await setUiLang(preferredUiLang());
+  await Promise.all([setUiLang(preferredUiLang()), loadConfig()]);
   if (!state.settings.deviceName) {
     state.settings.deviceName = defaultDeviceName();
     saveSettings();
