@@ -183,14 +183,16 @@ runs the type check and tests on every pull request and push, then deploys:
 
 | Environment | URL | Database | Deployed when |
 |---|---|---|---|
-| QA | https://car-exam-tw-qa.pokryfka.workers.dev | `car-exam-tw-qa` | A pull request is opened or updated |
-| Production | https://car-exam-tw.pokryfka.workers.dev | `car-exam-tw` | A pull request is merged to `main` |
+| QA | https://qa.car-exam.fyi | `car-exam-tw-qa` | A pull request is opened or updated |
+| Production | https://car-exam.fyi | `car-exam-tw` | A pull request is merged to `main` |
 
 Each deploy first applies new migrations from `migrations/` to that environment's database.
+Both environments also stay on their `workers.dev` addresses (`car-exam-tw.pokryfka.workers.dev`
+and `car-exam-tw-qa.pokryfka.workers.dev`).
 Pull requests from forks run the tests only.
 
 **Settings, all in `wrangler.jsonc`:**
-- Worker names, and database names and IDs, for each environment.
+- Worker names, custom domains (`routes`), and database names and IDs, for each environment.
 - Rate limit: requests per minute per client IP to the sync API.
 - `MAX_BODY_BYTES`: the largest upload accepted.
 - `MAX_DEVICES_PER_CODE`: how many devices can share one sync code.
@@ -206,8 +208,9 @@ Pull requests from forks run the tests only.
    **Account → D1 → Edit** added.
 4. In the GitHub repository, add the secrets `CLOUDFLARE_API_TOKEN` and
    `CLOUDFLARE_ACCOUNT_ID`.
-5. Update the environment URLs in `.github/workflows/deploy.yml` to match your
-   `workers.dev` subdomain.
+5. Put your own domains in `routes`, or remove `routes` to use only `workers.dev`. A custom
+   domain must be a zone in the same Cloudflare account.
+6. Update the environment URLs in `.github/workflows/deploy.yml` to match.
 
 ## Earlier version
 

@@ -5,7 +5,7 @@ bank: 1090 questions in Chinese and English. The app works in any modern browser
 tablets and computers. It also works offline, remembers which questions you get wrong, and
 can sync your progress between your devices.
 
-**Open the app:** https://car-exam-tw.pokryfka.workers.dev
+**Open the app:** https://car-exam.fyi
 
 It's free, and you don't need an account.
 

@@ -15,7 +15,8 @@
   },
   "observability": { "enabled": true },
 
-  // Production: https://car-exam-tw.pokryfka.workers.dev
+  // Production: https://car-exam.fyi (also https://car-exam-tw.pokryfka.workers.dev)
+  "routes": [{ "pattern": "car-exam.fyi", "custom_domain": true }],
   "d1_databases": [
     {
       "binding": "DB",
@@ -37,8 +38,9 @@
   },
 
   "env": {
-    // QA: https://car-exam-tw-qa.pokryfka.workers.dev
+    // QA: https://qa.car-exam.fyi (also https://car-exam-tw-qa.pokryfka.workers.dev)
     "qa": {
+      "routes": [{ "pattern": "qa.car-exam.fyi", "custom_domain": true }],
       "d1_databases": [
         {
           "binding": "DB",
