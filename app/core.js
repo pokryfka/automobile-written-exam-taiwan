@@ -107,9 +107,13 @@
     return shuffle(weak.concat(rest), rand);
   }
 
-  // Mock exam like the real test: n random questions from the whole bank.
-  function pickExam(questions, n, rand) {
-    return shuffle(questions, rand || Math.random).slice(0, n);
+  // Mock exam like the real test: format.size random questions, of which format.hazard are
+  // hazard-perception video questions (q.hazard) and the rest come from the written bank.
+  function pickExam(questions, format, rand) {
+    rand = rand || Math.random;
+    const hazard = shuffle(questions.filter(q => q.hazard), rand).slice(0, format.hazard || 0);
+    const written = shuffle(questions.filter(q => !q.hazard), rand).slice(0, format.size - hazard.length);
+    return shuffle(written.concat(hazard), rand);
   }
 
   function summary(questions, stats) {

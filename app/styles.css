@@ -137,6 +137,7 @@ label.first { margin-top: 0; }
 .options button.wrong { border-color: var(--bad); background: var(--bad-bg); }
 
 .feedback { margin-top: 14px; font-weight: 600; }
+.video-link { display: inline-block; margin: 2px 0 8px; font-size: 14px; }
 .unsure-row { margin-top: 10px; }
 .unsure-toggle { font: inherit; font-size: 14px; border: 1px solid var(--border); border-radius: 999px; background: none; color: var(--muted); padding: 4px 14px; min-height: 32px; cursor: pointer; }
 .unsure-toggle.on { background: var(--accent); border-color: var(--accent); color: var(--accent-text); }
