@@ -101,6 +101,7 @@
   "settings.questionCount": "{count} questions",
   "settings.resetConfirm": "Reset the stats recorded on this device? Other devices keep theirs.",
   "settings.reset": "Reset this device",
+  "settings.version": "Version",
 
   "settings.support": "Support",
   "settings.supportHelp": "Found a wrong answer, a typo or a bug, or have an idea? Let us know on GitHub. A free GitHub account is needed to post.",

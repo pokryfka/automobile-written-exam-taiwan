@@ -3,7 +3,8 @@
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
 const EXAM_SIZE = 40;
-const SUPPORT_URL = 'https://github.com/pokryfka/car-exam-tw/issues';
+const REPO_URL = 'https://github.com/pokryfka/car-exam-tw';
+const SUPPORT_URL = REPO_URL + '/issues';
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
@@ -30,6 +31,8 @@ const state = {
   // Features of this deployment from /api/config, kept for offline use. Gist sync is offered
   // only where enabled (QA), but a device already using it keeps it.
   config: store.get('config', { gistSync: false }),
+  // The running app's version, from version.json written at deploy time (see tools/write_version.mjs).
+  version: { version: 'dev', commit: null, environment: 'dev' },
   languages: [], // [{ code, name }] from bank.json; the first is the reference (English)
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
@@ -867,7 +870,8 @@ function settingsView() {
     h('div', { class: 'card' },
       h('h2', {}, t('settings.support')),
       h('p', { class: 'muted' }, t('settings.supportHelp')),
-      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport'))));
+      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport')),
+      versionLine()));
 }
 
 function codeSettings(status, syncNow) {
@@ -950,6 +954,19 @@ document.querySelectorAll('.nav[data-view]').forEach(b => b.addEventListener('cl
   (b.dataset.view === 'settings' ? settingsView : homeView)();
 }));
 
+// "Version v2.0.0" for a release, linking to its release notes; "Version v2.0.0+3 (1a2b3c4)"
+// after one, linking to the commit; " · QA" on QA; "Version dev" locally.
+function versionLine() {
+  const { version, commit, environment } = state.version;
+  const ext = (href, text) => h('a', { href, target: '_blank', rel: 'noopener' }, text);
+  const release = commit && /^v\d+(\.\d+)*$/.test(version || '');
+  const commitLink = commit && ext(REPO_URL + '/commit/' + commit, commit.slice(0, 7));
+  return h('p', { class: 'muted' }, t('settings.version'), ' ',
+    release ? ext(REPO_URL + '/releases/tag/' + version, version)
+      : version && commitLink ? [version, ' (', commitLink, ')'] : version || commitLink,
+    environment === 'qa' && ' · QA');
+}
+
 // ---------- boot ----------
 
 async function loadConfig() {
@@ -961,8 +978,15 @@ async function loadConfig() {
   } catch (e) { /* offline: keep the last known config */ }
 }
 
+async function loadVersion() {
+  try {
+    const res = await fetch('version.json');
+    if (res.ok) state.version = await res.json();
+  } catch (e) { /* offline without cache */ }
+}
+
 async function boot() {
-  await Promise.all([setUiLang(preferredUiLang()), loadConfig()]);
+  await Promise.all([setUiLang(preferredUiLang()), loadConfig(), loadVersion()]);
   if (!state.settings.deviceName) {
     state.settings.deviceName = defaultDeviceName();
     saveSettings();
