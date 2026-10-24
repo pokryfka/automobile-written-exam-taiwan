@@ -54,9 +54,44 @@ function saveSettings() { store.set('settings', state.settings); }
 // To add a language: add its file and an entry here.
 
 const UI_LANGS = [
-  { code: 'en', name: 'English', locale: 'en' },
-  { code: 'zh-Hant', name: '繁體中文（台灣）', locale: 'zh-TW' },
+  { code: 'en', name: 'English', locale: 'en', flag: 'gb' },
+  { code: 'zh-Hant', name: '繁體中文（台灣）', locale: 'zh-TW', flag: 'tw' },
 ];
+
+// Flags are inline SVG rather than emoji, which Windows shows as two letters. Drawn at 3:2.
+let flagIds = 0;
+const FLAGS = {
+  gb: () => {
+    const id = 'f' + flagIds++;
+    return `<clipPath id="${id}a"><path d="M0 0v30h60V0z"/></clipPath>`
+      + `<clipPath id="${id}b"><path d="M30 15h30v15zv15H0zH0V0zV0h30z"/></clipPath>`
+      + `<g clip-path="url(#${id}a)"><path d="M0 0v30h60V0z" fill="#012169"/>`
+      + '<path d="M0 0l60 30m0-30L0 30" stroke="#fff" stroke-width="6"/>'
+      + `<path d="M0 0l60 30m0-30L0 30" clip-path="url(#${id}b)" stroke="#C8102E" stroke-width="4"/>`
+      + '<path d="M30 0v30M0 15h60" stroke="#fff" stroke-width="10"/>'
+      + '<path d="M30 0v30M0 15h60" stroke="#C8102E" stroke-width="6"/></g>';
+  },
+  tw: () => {
+    // Red field, blue canton, white sun with 12 rays.
+    const rays = [];
+    for (let i = 0; i < 24; i++) {
+      const r = i % 2 ? 9.5 : 15, a = (i * Math.PI) / 12 - Math.PI / 2;
+      rays.push((15 + r * Math.cos(a)).toFixed(2) + ' ' + (10 + r * Math.sin(a)).toFixed(2));
+    }
+    return '<path d="M0 0h60v40H0z" fill="#FE0000"/><path d="M0 0h30v20H0z" fill="#000095"/>'
+      + `<path d="M${rays.join('L')}z" fill="#fff"/>`
+      + '<circle cx="15" cy="10" r="5.6" fill="#000095"/><circle cx="15" cy="10" r="4.8" fill="#fff"/>';
+  },
+};
+const FLAG_VIEWBOX = { gb: '0 0 60 30', tw: '0 0 60 40' };
+
+function flagIcon(flag) {
+  const span = document.createElement('span');
+  span.className = 'flag';
+  span.setAttribute('aria-hidden', 'true');
+  span.innerHTML = `<svg viewBox="${FLAG_VIEWBOX[flag]}" preserveAspectRatio="xMidYMid slice">${FLAGS[flag]()}</svg>`;
+  return span;
+}
 
 const ui = { lang: 'en', strings: {}, fallback: {} };
 
@@ -95,8 +130,61 @@ async function setUiLang(code) {
   document.querySelector('[data-view=home]').setAttribute('aria-label', t('nav.home'));
   document.querySelector('[data-view=settings]').setAttribute('aria-label', t('nav.settings'));
   document.getElementById('sync-dot').title = sync.lastMessage || t('sync.statusLabel');
+  const current = UI_LANGS.find(l => l.code === code);
+  const button = document.getElementById('lang-btn');
+  button.replaceChildren(flagIcon(current.flag));
+  button.setAttribute('aria-label', t('settings.appLanguage') + ': ' + current.name);
   return true;
 }
+
+// Language menu in the top bar: the current language's flag opens a list of all of them.
+const langMenu = {
+  button: document.getElementById('lang-btn'),
+  menu: document.getElementById('lang-menu'),
+  open() {
+    this.menu.replaceChildren(...UI_LANGS.map(l => h('button', {
+      role: 'menuitemradio',
+      'aria-checked': String(l.code === ui.lang),
+      lang: l.locale,
+      onclick: () => this.choose(l.code),
+    }, flagIcon(l.flag), h('span', { class: 'name' }, l.name), h('span', { class: 'check' }, l.code === ui.lang ? '✓' : ''))));
+    this.menu.hidden = false;
+    this.button.setAttribute('aria-expanded', 'true');
+    (this.menu.querySelector('[aria-checked="true"]') || this.menu.firstChild).focus();
+  },
+  close(focusButton) {
+    if (this.menu.hidden) return;
+    this.menu.hidden = true;
+    this.button.setAttribute('aria-expanded', 'false');
+    if (focusButton) this.button.focus();
+  },
+  async choose(code) {
+    this.close(true);
+    if (code === ui.lang) return;
+    if (!(await setUiLang(code))) {
+      alert(t('settings.downloadFailed', { language: UI_LANGS.find(l => l.code === code).name }));
+      return;
+    }
+    state.settings.uiLang = code;
+    prefsChanged();
+    redraw();
+  },
+};
+langMenu.button.addEventListener('click', e => {
+  e.stopPropagation();
+  if (langMenu.menu.hidden) langMenu.open(); else langMenu.close(false);
+});
+document.addEventListener('click', e => { if (!langMenu.menu.contains(e.target)) langMenu.close(false); });
+document.addEventListener('keydown', e => {
+  if (langMenu.menu.hidden) return;
+  if (e.key === 'Escape') langMenu.close(true);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = [...langMenu.menu.children];
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+  }
+});
 
 function defaultDeviceName() {
   // A touch screen as the main pointer means a phone or tablet; the smaller screen side tells them apart.
@@ -359,7 +447,7 @@ const sync = {
       const adopted = await adoptPrefs(doc.devices);
       sync.status('ok', t('sync.synced', { time: new Date().toLocaleTimeString(uiLocale()) }));
       if (state.view === 'home') homeView();
-      else if (adopted && state.view === 'settings') settingsView();
+      else if (adopted) redraw();
     } catch (e) {
       sync.status('err', t('sync.failed', { error: e.message }));
     } finally {
@@ -405,6 +493,12 @@ function h(tag, attrs, ...children) {
 function render(...nodes) {
   view.replaceChildren(...nodes);
   window.scrollTo(0, 0);
+}
+
+// Draw the current screen again, e.g. in a new interface language. A question keeps its answer.
+function redraw() {
+  const views = { home: homeView, weak: weakListView, question: questionView, result: resultView, settings: settingsView };
+  if (views[state.view]) views[state.view]();
 }
 
 function questionLabel(q) {
@@ -565,16 +659,21 @@ function questionView() {
 
   function choose(value) {
     if (answered) return;
-    answered = true;
-    chosen = value;
     const correct = value === q.answer;
     Core.recordAnswer(state.myStats, q.id, correct, Date.now());
     store.set('myStats', state.myStats);
     sync.soon();
     s.results.push({ id: q.id, correct });
+    s.chosen = { idx: s.idx, value };
 
     if (s.exam) return next();
+    showAnswer(value);
+  }
 
+  // Mark the answer; also used when the question is drawn again after it was answered.
+  function showAnswer(value) {
+    answered = true;
+    chosen = value;
     choices.forEach((ch, i) => {
       buttons[i].disabled = true;
       if (ch.value === q.answer) buttons[i].classList.add('correct');
@@ -591,6 +690,7 @@ function questionView() {
   }
 
   showText(lang);
+  if (s.chosen && s.chosen.idx === s.idx) showAnswer(s.chosen.value);
   render(h('div', { class: 'card' },
     h('div', { class: 'qmeta' },
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
@@ -672,22 +772,6 @@ function settingsView() {
   h('option', { value: 'gist', selected: mode === 'gist' }, t('settings.syncGist')));
 
   render(
-    h('div', { class: 'card' },
-      h('label', { for: 'ui-lang', class: 'first' }, t('settings.appLanguage')),
-      h('select', {
-        id: 'ui-lang',
-        onchange: async e => {
-          const code = e.target.value;
-          if (!(await setUiLang(code))) {
-            alert(t('settings.downloadFailed', { language: UI_LANGS.find(l => l.code === code).name }));
-            e.target.value = ui.lang;
-            return;
-          }
-          state.settings.uiLang = code;
-          prefsChanged();
-          if (state.view === 'settings') settingsView(); // unless the user moved on while the strings loaded
-        },
-      }, UI_LANGS.map(l => h('option', { value: l.code, selected: l.code === ui.lang }, l.name)))),
     h('div', { class: 'card' },
       h('h2', {}, t('settings.syncTitle')),
       h('label', { for: 'sync-mode' }, t('settings.syncMethod')), modeSelect,
@@ -819,7 +903,7 @@ function gistSettings() {
       }, t('gist.save'))));
 }
 
-document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
+document.querySelectorAll('.nav[data-view]').forEach(b => b.addEventListener('click', () => {
   state.session = null;
   (b.dataset.view === 'settings' ? settingsView : homeView)();
 }));

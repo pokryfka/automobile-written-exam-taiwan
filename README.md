@@ -48,8 +48,8 @@ Pick a mode on the home screen:
 ## Languages
 
 **App language:** the app's buttons and menus are in **English** or **Traditional Chinese
-(繁體中文，台灣)**. It starts in English. To change it, go to ⚙️ → **App language · 介面語言**.
-This setting is separate from the language of the questions.
+(繁體中文，台灣)**. It starts in English. To change it, tap the flag in the top bar, next to ⚙️,
+and pick a language. This setting is separate from the language of the questions.
 
 **Question language:** each question and its answers can be shown in **Chinese (中文)** or a
 **second language**.

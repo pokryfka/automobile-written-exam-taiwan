@@ -84,7 +84,9 @@ entry, so devices never overwrite each other.
 - **Using them:** `t(key, vars)` in `app/app.js` returns the string in the current interface
   language, falling back to English and then to the key itself.
 - **Choosing the language:**
-  - The interface language is chosen in ⚙️, independently of the question languages.
+  - The interface language is chosen from the flag menu in the top bar, independently of the
+    question languages. Flags are inline SVG (`FLAGS` in `app/app.js`), since Windows shows flag
+    emoji as letters.
   - The default is English.
   - The choice is synced between devices (see [Stats and sync](#stats-and-sync)).
 - **Section and topic names** follow the interface language when the question bank has them
@@ -96,8 +98,8 @@ entry, so devices never overwrite each other.
 To add an interface language:
 1. Copy `app/i18n/en.json` to `app/i18n/<code>.json` and translate the values, keeping the keys
    and placeholders.
-2. Add the language to `UI_LANGS` in `app/app.js`, with its own name and its locale for
-   formatting times.
+2. Add the language to `UI_LANGS` in `app/app.js`, with its own name, its locale for
+   formatting times, and a flag (add the flag's SVG to `FLAGS` if it's new).
 3. Add the file to `SHELL` in `app/sw.js` if it should work offline from the first visit.
 
 ## Question data
