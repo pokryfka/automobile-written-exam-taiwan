@@ -3,7 +3,8 @@
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
 const EXAM_SIZE = 40;
-const SUPPORT_URL = 'https://github.com/pokryfka/car-exam-tw/issues';
+const REPO_URL = 'https://github.com/pokryfka/car-exam-tw';
+const SUPPORT_URL = REPO_URL + '/issues';
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
@@ -30,6 +31,8 @@ const state = {
   // Features of this deployment from /api/config, kept for offline use. Gist sync is offered
   // only where enabled (QA), but a device already using it keeps it.
   config: store.get('config', { gistSync: false }),
+  // The running app's version, from version.json written at deploy time (see tools/write_version.mjs).
+  version: { version: 'dev', commit: null, environment: 'dev' },
   languages: [], // [{ code, name }] from bank.json; the first is the reference (English)
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
@@ -853,6 +856,7 @@ function settingsView() {
         h('th', {}, langName(l.code)),
         h('td', {}, l.edition || t('settings.unknownEdition'), l.date && h('div', { class: 'muted' }, l.date)),
         h('td', { class: 'muted' }, t('settings.questionCount', { count: l.questions || 0 }))))),
+      versionLine(),
       h('div', { class: 'actions' },
         h('button', {
           class: 'btn',
@@ -950,6 +954,15 @@ document.querySelectorAll('.nav[data-view]').forEach(b => b.addEventListener('cl
   (b.dataset.view === 'settings' ? settingsView : homeView)();
 }));
 
+// "Version v2.0.0 (b853c34)", "Version v2.0.0+3 (1a2b3c4) · QA", or "Version dev" locally.
+function versionLine() {
+  const { version, commit, environment } = state.version;
+  const link = commit && h('a', { href: REPO_URL + '/commit/' + commit, target: '_blank', rel: 'noopener' }, commit.slice(0, 7));
+  return h('p', { class: 'muted' }, t('settings.version', { version: version || '' }),
+    version && link ? [' (', link, ')'] : link,
+    environment === 'qa' && ' · QA');
+}
+
 // ---------- boot ----------
 
 async function loadConfig() {
@@ -961,8 +974,15 @@ async function loadConfig() {
   } catch (e) { /* offline: keep the last known config */ }
 }
 
+async function loadVersion() {
+  try {
+    const res = await fetch('version.json');
+    if (res.ok) state.version = await res.json();
+  } catch (e) { /* offline without cache */ }
+}
+
 async function boot() {
-  await Promise.all([setUiLang(preferredUiLang()), loadConfig()]);
+  await Promise.all([setUiLang(preferredUiLang()), loadConfig(), loadVersion()]);
   if (!state.settings.deviceName) {
     state.settings.deviceName = defaultDeviceName();
     saveSettings();

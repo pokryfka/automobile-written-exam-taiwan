@@ -42,6 +42,7 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 | `migrations/` | D1 schema migrations |
 | `wrangler.jsonc` | Worker configuration for production and QA |
 | `tools/extract_questions.py` | PDF → `bank.json` and `text/<lang>.json` extractor |
+| `tools/write_version.mjs` | Writes `app/version.json` before each deploy (see [Versions](#versions)) |
 | `tests/` | Unit tests for `app/core.js` and consistency checks for `app/data/` |
 
 ## Stats and sync
@@ -184,7 +185,7 @@ runs the type check and tests on every pull request and push, then deploys:
 | Environment | URL | Database | Deployed when |
 |---|---|---|---|
 | QA | https://qa.car-exam.fyi | `car-exam-tw-qa` | A pull request is opened or updated |
-| Production | https://car-exam.fyi | `car-exam-tw` | A pull request is merged to `main` |
+| Production | https://car-exam.fyi | `car-exam-tw` | A pull request is merged to `main`, or a `v*` tag is pushed |
 
 Each deploy first applies new migrations from `migrations/` to that environment's database.
 Both environments also stay on their `workers.dev` addresses (`car-exam-tw.pokryfka.workers.dev`
@@ -211,3 +212,22 @@ Pull requests from forks run the tests only.
 5. Put your own domains in `routes`, or remove `routes` to use only `workers.dev`. A custom
    domain must be a zone in the same Cloudflare account.
 6. Update the environment URLs in `.github/workflows/deploy.yml` to match.
+
+## Versions
+
+⚙️ → Data shows the version the app is running, with its commit id linking to GitHub:
+
+| Deployed from | Shown |
+|---|---|
+| A release tag, such as `v2.0.0` | `Version v2.0.0 (b853c34)` |
+| 3 commits after that tag | `Version v2.0.0+3 (1a2b3c4)` |
+| A pull request, on QA | `Version v2.0.0+4 (9f8e7d6) · QA` |
+| `npm run dev` | `Version dev` |
+
+- Before each deploy, `tools/write_version.mjs` replaces `app/version.json` (committed as
+  `"dev"`) with the latest `v*` tag, the number of commits since it, the commit id and the
+  environment.
+- The service worker caches `version.json` with the rest of the app, so the version shown is
+  the one the device is actually running.
+- To release, tag the commit on `main` (for example `v2.1.0`) and push the tag. Pushing a
+  `v*` tag deploys production again, so it shows the plain release version.
