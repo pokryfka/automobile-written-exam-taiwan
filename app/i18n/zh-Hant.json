@@ -40,6 +40,7 @@
   "home.randomHint": "任何題目",
   "home.exam": "📝 模擬考",
   "home.examHint": "{size} 題，{pass} 分及格",
+  "home.examHintTimed": "{size} 題，{pass} 分及格，{minutes} 分鐘",
   "home.weakList": "📊 弱點清單",
   "home.weakListHint": "最常答錯的題目",
   "home.length": "每回題數",
@@ -71,6 +72,8 @@
   "q.wrong": "✗ 答錯了，正確答案是 {answer}",
   "q.next": "下一題 →",
   "q.finish": "完成",
+  "exam.timeLeft": "剩餘時間",
+  "exam.timeWarning": "剩下 {minutes} 分鐘",
 
   "result.examTitle": "模擬考結果",
   "result.sessionTitle": "本回練習結束",
@@ -80,6 +83,8 @@
   "result.correctOption": "正確選項",
   "result.retry": "重練錯題",
   "result.home": "回首頁",
+  "result.timeTaken": "作答時間 {time}",
+  "result.timeUp": "時間到：{count} 題未作答，以答錯計算。",
 
   "settings.appLanguage": "介面語言 · App language",
 
@@ -97,6 +102,12 @@
   "settings.questionLanguages": "題目語言",
   "settings.questionLanguagesHelp": "每一題都可以在中文和第二語言之間切換，兩種語言都會下載以供離線使用。",
   "settings.secondLanguage": "第二語言",
+  "settings.exam": "模擬考",
+  "settings.examTime": "作答時間",
+  "settings.examTimeOff": "不限時",
+  "settings.examTimeMinutes": "{n} 分鐘",
+  "settings.examTimeOfficial": "{n} 分鐘（與正式考試相同）",
+  "settings.examTimeHelp": "正式考試作答時間為 {minutes} 分鐘。時間到時模擬考結束，未作答的題目以答錯計算。剩下 5 分鐘時會提醒你。",
   "settings.downloadFailed": "無法下載{language}，請檢查網路連線後再試一次。",
 
   "settings.data": "資料",

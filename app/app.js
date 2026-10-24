@@ -10,6 +10,11 @@ const OFFICIAL_PRACTICE_URL = 'https://www.mvdis.gov.tw/m3-simulator-drv/index';
 // Highway Bureau's practice test: 50 random questions, including 5 hazard-perception video
 // questions, 2 points each, 85 points to pass.
 const EXAM = { size: 50, hazard: 5, points: 2, pass: 85 };
+// Time limits offered for the mock exam, in minutes (0 is no limit). The official test allows
+// 30 minutes; a warning shows when EXAM_WARN_MINUTES are left.
+const EXAM_TIME_LIMITS = [0, 10, 20, 30];
+const OFFICIAL_EXAM_MINUTES = 30;
+const EXAM_WARN_MINUTES = 5;
 const view = document.getElementById('view');
 
 // ---------- storage ----------
@@ -42,6 +47,7 @@ const state = {
   hazard: null, // hazard-perception video questions from data/hazard.json, added to questions
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
+    examMinutes: OFFICIAL_EXAM_MINUTES, // mock exam time limit, 0 for none
     uiLang: 'en', // interface language
     secondLang: 'en', // language offered next to Chinese on each question
     questionLang: 'en', // language the next question opens in
@@ -636,7 +642,9 @@ function homeView() {
         h('button', { onclick: start('random') }, h('b', {}, t('home.random')), h('small', {}, t('home.randomHint'))),
         h('button', {
           onclick: () => startSession(Core.pickExam(state.questions, EXAM).map(q => q.id), 'exam', true),
-        }, h('b', {}, t('home.exam')), h('small', {}, t('home.examHint', { size: EXAM.size, pass: EXAM.pass }))),
+        }, h('b', {}, t('home.exam')), h('small', {}, state.settings.examMinutes
+          ? t('home.examHintTimed', { size: EXAM.size, pass: EXAM.pass, minutes: state.settings.examMinutes })
+          : t('home.examHint', { size: EXAM.size, pass: EXAM.pass }))),
         h('button', { onclick: weakListView }, h('b', {}, t('home.weakList')), h('small', {}, t('home.weakListHint')))),
       h('label', { for: 'len' }, t('home.length')),
       h('select', {
@@ -688,7 +696,58 @@ function weakListView() {
 
 function startSession(ids, mode, exam) {
   state.session = { ids, idx: 0, mode, exam, results: [] };
+  const minutes = exam ? state.settings.examMinutes : 0;
+  if (minutes) {
+    state.session.started = Date.now();
+    state.session.deadline = state.session.started + minutes * 60000;
+    startExamClock(state.session);
+  }
   questionView();
+}
+
+// ---------- mock exam time limit ----------
+// The countdown runs from the start time, so it keeps going while the app is in the background.
+
+let examClock = null;
+
+function formatDuration(ms) {
+  const total = Math.max(0, Math.ceil(ms / 1000));
+  return Math.floor(total / 60) + ':' + String(total % 60).padStart(2, '0');
+}
+
+function startExamClock(s) {
+  clearInterval(examClock);
+  examClock = setInterval(() => tickExam(s), 1000);
+}
+
+function tickExam(s) {
+  if (state.session !== s || state.view !== 'question') {
+    if (state.session !== s) clearInterval(examClock);
+    return;
+  }
+  const left = s.deadline - Date.now();
+  if (left <= 0) {
+    s.timedOut = true;
+    resultView();
+    return;
+  }
+  const warn = left <= EXAM_WARN_MINUTES * 60000;
+  if (warn && !s.warned) {
+    s.warned = true;
+    toast(t('exam.timeWarning', { minutes: EXAM_WARN_MINUTES }));
+  }
+  const clock = document.getElementById('exam-clock');
+  if (clock) {
+    clock.textContent = formatDuration(left);
+    clock.classList.toggle('warn', warn);
+  }
+}
+
+// A short message at the top of the screen that disappears by itself.
+function toast(text) {
+  const el = h('div', { class: 'toast', role: 'status' }, text);
+  document.body.append(el);
+  setTimeout(() => el.remove(), 5000);
 }
 
 // Hazard-perception questions link to their video on the Highway Bureau's file server.
@@ -800,7 +859,12 @@ function questionView() {
   showText(lang);
   render(h('div', { class: 'card' },
     h('div', { class: 'qmeta' },
-      h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
+      h('span', {}, (s.idx + 1) + ' / ' + s.ids.length,
+        s.deadline && [' · ', h('span', {
+          id: 'exam-clock',
+          class: 'exam-clock' + (s.deadline - Date.now() <= EXAM_WARN_MINUTES * 60000 ? ' warn' : ''),
+          'aria-label': t('exam.timeLeft'),
+        }, formatDuration(s.deadline - Date.now()))]),
       toggle,
       h('span', {}, r ? statLabel(r) : t('q.new'))),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
@@ -816,6 +880,8 @@ function questionView() {
 function resultView() {
   state.view = 'result';
   const s = state.session;
+  clearInterval(examClock);
+  const unanswered = s.ids.length - s.results.length;
   const right = s.results.filter(x => x.correct).length;
   const total = s.results.length;
   const wrongIds = s.results.filter(x => !x.correct).map(x => x.id);
@@ -825,6 +891,8 @@ function resultView() {
     h('h2', {}, t(s.exam ? 'result.examTitle' : 'result.sessionTitle')),
     h('div', { class: 'result-score ' + (s.exam ? (score >= EXAM.pass ? 'pass' : 'fail') : '') }, s.exam ? score : right + ' / ' + total),
     s.exam && h('p', { style: 'text-align:center' }, score >= EXAM.pass ? t('result.pass') : t('result.fail', { pass: EXAM.pass })),
+    s.timedOut && h('p', { class: 'muted', style: 'text-align:center' }, t('result.timeUp', { count: unanswered })),
+    s.deadline && !s.timedOut && h('p', { class: 'muted', style: 'text-align:center' }, t('result.timeTaken', { time: formatDuration(Date.now() - s.started) })),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
       const text = qText(q);
@@ -915,6 +983,16 @@ function settingsView() {
         },
       }, state.languages.filter(l => l.code !== PRIMARY_LANG).map(l =>
         h('option', { value: l.code, selected: l.code === secondLang() }, langName(l.code))))),
+    h('div', { class: 'card' },
+      h('h2', {}, t('settings.exam')),
+      h('label', { for: 'exam-time' }, t('settings.examTime')),
+      h('select', {
+        id: 'exam-time',
+        onchange: e => { state.settings.examMinutes = +e.target.value; saveSettings(); },
+      }, EXAM_TIME_LIMITS.map(n => h('option', { value: n, selected: n === state.settings.examMinutes },
+        n === 0 ? t('settings.examTimeOff')
+          : t(n === OFFICIAL_EXAM_MINUTES ? 'settings.examTimeOfficial' : 'settings.examTimeMinutes', { n })))),
+      h('p', { class: 'muted' }, t('settings.examTimeHelp', { minutes: OFFICIAL_EXAM_MINUTES }))),
     h('div', { class: 'card' },
       h('h2', {}, t('settings.data')),
       h('p', { class: 'muted' }, t('settings.dataHelpBefore', { count: state.questions.length }),

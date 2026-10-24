@@ -207,6 +207,15 @@ The rules are in `EXAM` in `app/app.js`. They follow the Highway Bureau's
 [online practice test](https://www.mvdis.gov.tw/m3-simulator-drv/index): 50 random questions,
 5 of them hazard-perception questions, 2 points each, 85 points to pass.
 
+**Time limit:**
+- Users choose one of `EXAM_TIME_LIMITS` in ⚙️ → Mock exam (`settings.examMinutes`). The
+  default is `OFFICIAL_EXAM_MINUTES` (30).
+- The countdown runs from the start time stored in the session, so it keeps going while the app
+  is in the background.
+- When `EXAM_WARN_MINUTES` are left, a message shows once and the clock turns red.
+- When the time is up, the exam ends: unanswered questions count as wrong in the score but
+  aren't recorded in the stats.
+
 ## Deployment
 
 Changes go through pull requests. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
