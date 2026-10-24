@@ -3,6 +3,7 @@
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
 const EXAM_SIZE = 40;
+const SUPPORT_URL = 'https://github.com/pokryfka/automobile-written-exam-taiwan/issues';
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
@@ -616,7 +617,11 @@ function settingsView() {
             sync.run();
             homeView();
           },
-        }, 'Reset this device'))));
+        }, 'Reset this device'))),
+    h('div', { class: 'card' },
+      h('h2', {}, 'Support'),
+      h('p', { class: 'muted' }, 'Found a wrong answer, a typo or a bug, or have an idea? Let us know on GitHub. A free GitHub account is needed to post.'),
+      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, 'Get support')));
 }
 
 function codeSettings(status, syncNow) {
