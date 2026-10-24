@@ -331,7 +331,7 @@ def build_reference(raw, out, lang, save_images, problems):
         texts[qid] = {"q": stem, "options": options}
 
     check_numbers([q["no"] for q in questions] + [n for q in questions for n in q.get("also", [])], problems)
-    base = {"version": 2, "languages": [{"code": lang, "name": LANGUAGE_NAMES.get(lang, lang)}], "questions": questions}
+    base = {"version": 2, "languages": [], "questions": questions}
     text = {"language": lang, "sections": sections, "topics": topics, "questions": texts}
     return base, text
 
@@ -387,6 +387,30 @@ def build_translation(raw, base, lang, problems):
             "topics": names(topic_names, "topic"), "questions": texts}
 
 
+def detect_edition(path):
+    """(label, ISO date or None) from the edition printed on the first pages, or (None, None)."""
+    with pdfplumber.open(path) as pdf:
+        text = "\n".join(p.extract_text() or "" for p in pdf.pages[:2])
+    # Chinese header: 新版汽車筆試題庫 115.5.29, a Republic of China (民國) date; year + 1911 = Gregorian.
+    m = re.search(r"汽車筆試題庫\s*(\d{2,3})\.(\d{1,2})\.(\d{1,2})", text)
+    if m:
+        y, mo, d = (int(g) for g in m.groups())
+        return f"{y}.{mo}.{d}", f"{y + 1911:04d}-{mo:02d}-{d:02d}"
+    # English header: "Year 115 Edition", title page: "New Edition — Announced June 2026".
+    m = re.search(r"Year\s+(\d+)\s+Edition", text)
+    if m:
+        announced = re.search(r"Announced\s+([A-Z][a-z]+\s+\d{4})", text)
+        return f"Year {m.group(1)} edition" + (f", announced {announced.group(1)}" if announced else ""), None
+    return None, None
+
+
+def language_entry(lang, edition, date, count):
+    entry = {"code": lang, "name": LANGUAGE_NAMES.get(lang, lang), "edition": edition, "questions": count}
+    if date:
+        entry["date"] = date
+    return entry
+
+
 def debug_page(path, n):
     with pdfplumber.open(path) as pdf:
         page = pdf.pages[n - 1]
@@ -404,6 +428,7 @@ def main():
     ap.add_argument("--out", default=str(OUT_DIR))
     ap.add_argument("--debug", type=int, help="print the rows of this 1-based page and exit")
     ap.add_argument("--no-images", action="store_true", help="reference edition: do not write picture files")
+    ap.add_argument("--edition", help="edition label, if it cannot be read from the PDF (e.g. 115.5.29)")
     args = ap.parse_args()
     if args.debug:
         debug_page(args.pdf, args.debug)
@@ -412,12 +437,17 @@ def main():
     out = Path(args.out)
     base_path = out / "bank.json"
     problems = []
+    edition, date = detect_edition(args.pdf)
+    if args.edition:
+        edition, date = args.edition, None
+    if not edition:
+        problems.append("cannot find the edition in the PDF; pass it with --edition")
     raw = parse_pdf(args.pdf, args.lang, problems)
     if args.lang == REFERENCE:
         base, text = build_reference(raw, out, args.lang, not args.no_images, problems)
-        if base_path.exists():  # keep the other languages listed
-            old = json.loads(base_path.read_text()).get("languages", [])
-            base["languages"] += [l for l in old if l["code"] != args.lang]
+        old = json.loads(base_path.read_text()).get("languages", []) if base_path.exists() else []
+        base["languages"] = [language_entry(args.lang, edition, date, len(text["questions"]))] + \
+            [l for l in old if l["code"] != args.lang]  # keep the other languages listed
     else:
         if not base_path.exists():
             sys.exit(f"{base_path} not found: extract the reference edition first (--lang {REFERENCE})")
@@ -428,7 +458,7 @@ def main():
         if missing:
             problems.append(f"no text for numbers {missing[:30]}")
         base["languages"] = [l for l in base["languages"] if l["code"] != args.lang] + \
-            [{"code": args.lang, "name": LANGUAGE_NAMES.get(args.lang, args.lang)}]
+            [language_entry(args.lang, edition, date, len(text["questions"]))]
 
     if problems:
         print(f"{len(problems)} problems, nothing written:", file=sys.stderr)
@@ -436,11 +466,13 @@ def main():
             print("  " + p, file=sys.stderr)
         sys.exit(1)
 
+    text = {"language": text["language"], "edition": edition, **({"date": date} if date else {}),
+            **{k: v for k, v in text.items() if k != "language"}}
     (out / "text").mkdir(parents=True, exist_ok=True)
     base_path.write_text(json.dumps(base, ensure_ascii=False, indent=1) + "\n")
     (out / "text" / f"{args.lang}.json").write_text(json.dumps(text, ensure_ascii=False, indent=1) + "\n")
     qs = base["questions"]
-    print(f"{args.lang}: {len(text['questions'])} questions, {len(text['sections'])} sections, "
+    print(f"{args.lang} ({edition}): {len(text['questions'])} questions, {len(text['sections'])} sections, "
           f"{len(text['topics'])} topics; base has {len(qs)} questions "
           f"({sum('images' in q for q in qs)} with pictures, {sum('optionImages' in q for q in qs)} with picture options, "
           f"{sum(len(q.get('also', [])) for q in qs)} duplicates merged), languages: "

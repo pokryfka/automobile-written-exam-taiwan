@@ -9,6 +9,13 @@ const bank = JSON.parse(fs.readFileSync(path.join(dir, 'bank.json'), 'utf8'));
 const texts = Object.fromEntries(bank.languages.map(l =>
   [l.code, JSON.parse(fs.readFileSync(path.join(dir, 'text', l.code + '.json'), 'utf8'))]));
 
+test('every language names its edition and question count', () => {
+  for (const l of bank.languages) {
+    assert.ok(l.edition, `${l.code} has no edition`);
+    assert.strictEqual(l.questions, Object.keys(texts[l.code].questions).length, `${l.code} question count`);
+  }
+});
+
 test('English is the first language and covers every question', () => {
   assert.strictEqual(bank.languages[0].code, 'en');
   for (const q of bank.questions) assert.ok(texts.en.questions[q.id], `#${q.no} has no English text`);

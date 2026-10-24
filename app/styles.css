@@ -134,6 +134,11 @@ table.weak { width: 100%; border-collapse: collapse; font-size: 14px; }
 table.weak td { padding: 8px 4px; border-top: 1px solid var(--border); vertical-align: top; }
 table.weak td.num { text-align: right; white-space: nowrap; color: var(--bad); }
 
+table.editions { width: 100%; border-collapse: collapse; font-size: 15px; margin-bottom: 8px; }
+table.editions th, table.editions td { padding: 8px 4px; border-top: 1px solid var(--border); text-align: left; vertical-align: top; }
+table.editions td.muted { text-align: right; white-space: nowrap; }
+a { color: var(--accent); }
+
 .result-score { font-size: 48px; font-weight: 700; text-align: center; margin: 8px 0; }
 .pass { color: var(--good); }
 .fail { color: var(--bad); }

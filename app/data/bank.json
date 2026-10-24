@@ -3,11 +3,16 @@
  "languages": [
   {
    "code": "en",
-   "name": "English"
+   "name": "English",
+   "edition": "Year 115 edition, announced June 2026",
+   "questions": 1085
   },
   {
    "code": "zh-Hant",
-   "name": "中文"
+   "name": "中文",
+   "edition": "115.5.29",
+   "questions": 1081,
+   "date": "2026-05-29"
   }
  ],
  "questions": [

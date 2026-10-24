@@ -119,6 +119,11 @@ To add another language, such as Japanese (`ja`) or Indonesian (`id`):
 2. Compare the questions with English and list any mismatches in `MISMATCHED`.
 3. Check that the language's name is in `LANGUAGE_NAMES`.
 
+**Editions:**
+- The script reads each language's edition from its PDF ("Year 115 edition, announced June 2026", "115.5.29").
+- It records the edition with the question count in `bank.json`, and the app shows them in ⚙️ → Data.
+- If the edition can't be found, pass it with `--edition`.
+
 Use `--debug <page>` to see how the script reads one page.
 
 ## Development
