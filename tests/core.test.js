@@ -44,9 +44,13 @@ test('smart mode favours failed questions', () => {
 test('unseen mode and mock exam', () => {
   const stats = { q0: { c: 1, w: 0, h: '1', t: 1 } };
   assert.ok(!Core.pickQuestions(qs, stats, 'unseen', 100).some(q => q.id === 'q0'));
-  const exam = Core.pickExam(qs, 40);
-  assert.strictEqual(exam.length, 40);
-  assert.strictEqual(new Set(exam.map(q => q.id)).size, 40);
+  const bank = qs.concat(Array.from({ length: 10 }, (_, i) => ({ id: 'h' + i, hazard: true })));
+  const exam = Core.pickExam(bank, { size: 50, hazard: 5 });
+  assert.strictEqual(exam.length, 50);
+  assert.strictEqual(new Set(exam.map(q => q.id)).size, 50);
+  assert.strictEqual(exam.filter(q => q.hazard).length, 5);
+  // Without hazard questions the exam is all written ones.
+  assert.strictEqual(Core.pickExam(qs, { size: 40, hazard: 5 }).length, 40);
 });
 
 test('an unsure correct answer counts as correct but keeps the question under review', () => {

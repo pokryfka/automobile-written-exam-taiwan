@@ -2,12 +2,14 @@
 'use strict';
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
-const EXAM_SIZE = 40;
 const REPO_URL = 'https://github.com/pokryfka/car-exam-tw';
 const SUPPORT_URL = REPO_URL + '/issues';
 // The Highway Bureau's own online mock exam for cars and motorcycles.
 const OFFICIAL_PRACTICE_URL = 'https://www.mvdis.gov.tw/m3-simulator-drv/index';
-const EXAM_PASS = 85;
+// Mock exam rules of the car written test since 30 June 2026 (民國115年6月30日), as on the
+// Highway Bureau's practice test: 50 random questions, including 5 hazard-perception video
+// questions, 2 points each, 85 points to pass.
+const EXAM = { size: 50, hazard: 5, points: 2, pass: 85 };
 const view = document.getElementById('view');
 
 // ---------- storage ----------
@@ -37,6 +39,7 @@ const state = {
   version: { version: 'dev', commit: null, environment: 'dev' },
   languages: [], // [{ code, name }] from bank.json; the first is the reference (English)
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
+  hazard: null, // hazard-perception video questions from data/hazard.json, added to questions
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
     uiLang: 'en', // interface language
@@ -320,10 +323,32 @@ async function loadText(code) {
     const res = await fetch('data/text/' + code + '.json');
     if (!res.ok) return false;
     state.text[code] = await res.json();
+    addHazardText(code);
     return true;
   } catch (e) {
     return false; // offline and not cached yet
   }
+}
+
+// The hazard-perception questions keep their text in data/hazard.json; add it to a loaded language.
+function addHazardText(code) {
+  const text = state.text[code];
+  if (!state.hazard || !text || !state.hazard.sections[code]) return;
+  text.sections.hazard = state.hazard.sections[code];
+  for (const q of state.hazard.questions) if (q.text[code]) text.questions[q.id] = q.text[code];
+}
+
+async function loadHazard() {
+  try {
+    const res = await fetch('data/hazard.json');
+    if (!res.ok) return;
+    state.hazard = await res.json();
+  } catch (e) { return; } // offline without cache
+  for (const q of state.hazard.questions) {
+    const { text, ...rest } = q;
+    state.questions.push({ ...rest, section: 'hazard', hazard: true });
+  }
+  Object.keys(state.text).forEach(addHazardText);
 }
 
 function pool() {
@@ -549,6 +574,7 @@ function render(...nodes) {
 }
 
 function questionLabel(q) {
+  if (q.hazard) return live(() => bankName('sections', 'hazard') + ' #' + q.no);
   return live(() => '#' + q.no + (q.also ? ' (' + tr('question.also', { numbers: q.also.join(', #') }) + ')' : '')
     + (q.topic ? ' · ' + bankName('topics', q.topic).replace(/\s*[(（].*[)）]$/, '') : ''));
 }
@@ -598,8 +624,8 @@ function homeView() {
         h('button', { onclick: start('unseen') }, h('b', {}, t('home.unseen')), h('small', {}, t('home.unseenHint'))),
         h('button', { onclick: start('random') }, h('b', {}, t('home.random')), h('small', {}, t('home.randomHint'))),
         h('button', {
-          onclick: () => startSession(Core.pickExam(state.questions, EXAM_SIZE).map(q => q.id), 'exam', true),
-        }, h('b', {}, t('home.exam')), h('small', {}, t('home.examHint', { size: EXAM_SIZE, pass: EXAM_PASS }))),
+          onclick: () => startSession(Core.pickExam(state.questions, EXAM).map(q => q.id), 'exam', true),
+        }, h('b', {}, t('home.exam')), h('small', {}, t('home.examHint', { size: EXAM.size, pass: EXAM.pass }))),
         h('button', { onclick: weakListView }, h('b', {}, t('home.weakList')), h('small', {}, t('home.weakListHint')))),
       h('label', { for: 'len' }, t('home.length')),
       h('select', {
@@ -652,6 +678,11 @@ function weakListView() {
 function startSession(ids, mode, exam) {
   state.session = { ids, idx: 0, mode, exam, results: [] };
   questionView();
+}
+
+// Hazard-perception questions link to their video on the Highway Bureau's file server.
+function videoLink(q) {
+  return q.videoUrl && h('a', { class: 'video-link', href: q.videoUrl, target: '_blank', rel: 'noopener' }, t('q.video'));
 }
 
 // "✗2 ✓5", with "?1" when some right answers were marked unsure.
@@ -763,6 +794,7 @@ function questionView() {
       h('span', {}, r ? statLabel(r) : t('q.new'))),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
     (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: t('q.illustration') })),
+    videoLink(q),
     stem,
     h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
     h('div', { class: 'unsure-row' }, unsureButton),
@@ -776,12 +808,12 @@ function resultView() {
   const right = s.results.filter(x => x.correct).length;
   const total = s.results.length;
   const wrongIds = s.results.filter(x => !x.correct).map(x => x.id);
-  const score = total ? Math.round((right / total) * 1000) / 10 : 0;
+  const score = right * EXAM.points;
 
   render(h('div', { class: 'card' },
     h('h2', {}, t(s.exam ? 'result.examTitle' : 'result.sessionTitle')),
-    h('div', { class: 'result-score ' + (s.exam ? (score >= EXAM_PASS ? 'pass' : 'fail') : '') }, s.exam ? score : right + ' / ' + total),
-    s.exam && h('p', { style: 'text-align:center' }, score >= EXAM_PASS ? t('result.pass') : t('result.fail', { pass: EXAM_PASS })),
+    h('div', { class: 'result-score ' + (s.exam ? (score >= EXAM.pass ? 'pass' : 'fail') : '') }, s.exam ? score : right + ' / ' + total),
+    s.exam && h('p', { style: 'text-align:center' }, score >= EXAM.pass ? t('result.pass') : t('result.fail', { pass: EXAM.pass })),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
       const text = qText(q);
@@ -790,6 +822,7 @@ function resultView() {
         (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })),
         text.q,
         h('div', { class: 'muted' }, t('result.answer', { answer: '(' + (q.answer + 1) + ') ' + text.options[q.answer] })),
+        videoLink(q),
         q.optionImages && h('img', { class: 'thumb', src: 'data/' + q.optionImages[q.answer], alt: t('result.correctOption') })));
     })),
     h('div', { class: 'actions' },
@@ -880,6 +913,7 @@ function settingsView() {
         h('th', {}, langName(l.code)),
         h('td', {}, l.edition || t('settings.unknownEdition'), l.date && h('div', { class: 'muted' }, l.date)),
         h('td', { class: 'muted' }, t('settings.questionCount', { count: l.questions || 0 }))))),
+      state.hazard && h('p', { class: 'muted' }, t('settings.hazardEdition', { edition: state.hazard.edition, count: state.hazard.questions.length })),
       h('div', { class: 'actions' },
         h('button', {
           class: 'btn',
@@ -1023,6 +1057,7 @@ async function boot() {
       state.languages = bank.languages || [];
     }
   } catch (e) { /* offline without cache, or missing file */ }
+  if (state.questions.length) await loadHazard();
   if (!(await loadText(REFERENCE_LANG))) state.questions = [];
   await Promise.all(enabledLangs().map(loadText));
   if (!enabledLangs().includes(state.settings.questionLang)) state.settings.questionLang = REFERENCE_LANG;

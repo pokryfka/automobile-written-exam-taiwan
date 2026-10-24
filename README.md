@@ -1,7 +1,7 @@
 # Taiwan Car Written Exam Practice
 
 Practise for Taiwan's car driving licence written test (汽車筆試) with the official question
-bank: 1090 questions in Chinese and English. The app works in any modern browser on phones,
+banks: 1090 written questions and 10 hazard-perception video questions, in Chinese and English. The app works in any modern browser on phones,
 tablets and computers. It also works offline, remembers which questions you get wrong, and
 can sync your progress between your devices.
 
@@ -31,7 +31,7 @@ Pick a mode on the home screen:
 | 🔥 **Mistakes** | Only questions you got wrong or were unsure about, and haven't mastered yet |
 | 🆕 **New** | Questions you have never answered |
 | 🎲 **Random** | Any question |
-| 📝 **Mock exam** | 40 random questions from the whole bank, 85 points to pass |
+| 📝 **Mock exam** | 50 random questions, like the real test: 45 written and 5 hazard-perception questions, 2 points each, 85 points to pass |
 | 📊 **Weak list** | Your 50 weakest questions, with a button to practise them |
 
 - After each answer you see whether you were right, and the correct answer is highlighted.
@@ -49,9 +49,10 @@ Pick a mode on the home screen:
 and motorcycles, [交通部公路局汽機車線上隨機模擬考系統](https://www.mvdis.gov.tw/m3-simulator-drv/index).
 There's a link to it at the bottom of the home screen.
 
-> **The test has changed.** Since 30 June 2026 (民國115年6月30日) the real test has 50
-> questions, including 5 hazard-perception video questions. The mock exam still uses the
-> previous format.
+**Hazard-perception video questions:** since 30 June 2026 (民國115年6月30日) the real test
+includes 5 questions about a short driving video. They're in the app as their own section,
+**Hazard Perception Videos**. Each one has a **Watch the video** link to the Highway Bureau's
+video. Most can be answered from the text alone.
 
 ## Languages
 
@@ -110,7 +111,10 @@ down:** if you lose it, nobody can look it up for you.
 
 The questions, answers and pictures come from the official question bank PDFs published by
 the Highway Bureau (公路局), Ministry of Transportation and Communications, on its
-[car question bank page](https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823).
+[car question bank page](https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823): the
+written question bank (汽車筆試題庫) and the hazard-perception video questions
+(汽車危險感知影片選擇題). The mock exam follows the rules of the Highway Bureau's
+[online practice test](https://www.mvdis.gov.tw/m3-simulator-drv/index).
 
 ## Feedback
 

@@ -54,3 +54,28 @@ for (const [lang, text] of Object.entries(texts)) {
     }
   });
 }
+
+// Hazard-perception video questions: app/data/hazard.json, added to the bank by the app.
+const hazard = JSON.parse(fs.readFileSync(path.join(dir, 'hazard.json'), 'utf8'));
+
+test('hazard-perception questions are complete in English and Chinese', () => {
+  assert.ok(hazard.edition && hazard.date, 'hazard.json has no edition');
+  assert.ok(hazard.questions.length >= 5, 'the mock exam needs at least 5 hazard-perception questions');
+  for (const code of ['en', 'zh-Hant']) assert.ok(hazard.sections[code], `no ${code} section name`);
+  for (const q of hazard.questions) {
+    assert.match(q.id, /^h[0-9a-f]{9}$/);
+    assert.ok([0, 1, 2].includes(q.answer), `hazard #${q.no} answer`);
+    assert.match(q.videoUrl, /^https:\/\/space2\.thb\.gov\.tw\//, `hazard #${q.no} video link`);
+    for (const code of ['en', 'zh-Hant']) {
+      const text = q.text[code];
+      assert.ok(text && text.q && text.options.length === 3 && text.options.every(Boolean), `hazard #${q.no} ${code} text`);
+    }
+  }
+});
+
+test('hazard-perception ids do not clash with the written bank', () => {
+  const ids = new Set(bank.questions.map(q => q.id));
+  const hazardIds = hazard.questions.map(q => q.id);
+  assert.strictEqual(new Set(hazardIds).size, hazardIds.length);
+  for (const id of hazardIds) assert.ok(!ids.has(id), `${id} is also a written-bank id`);
+});

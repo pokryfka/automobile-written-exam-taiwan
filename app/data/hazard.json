@@ -1,0 +1,260 @@
+{
+ "edition": "115.6.5",
+ "date": "2026-06-05",
+ "sections": {
+  "en": "Hazard Perception Videos",
+  "zh-Hant": "危險感知影片題"
+ },
+ "questions": [
+  {
+   "id": "h494ee194a",
+   "no": 1,
+   "answer": 0,
+   "video": "202601",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOJhYA7zb0ddUn5cirG3IEQPtV5q3/w0XjZBCrh6cqzzFZIhd5a-DpOcCtAxnM-ibGA2PqiOw0",
+   "text": {
+    "en": {
+     "q": "An oncoming vehicle continues to display its turn signal and approaches the intersection without slowing down. What should you do?",
+     "options": [
+      "Slow down first and proceed only after confirming it is safe.",
+      "Honk or flash your lights to remind the vehicle to let you pass first.",
+      "Vehicles going straight have priority; assume the other vehicle will yield to me."
+     ]
+    },
+    "zh-Hant": {
+     "q": "對向的車輛持續顯示方向燈並未減速接近路口，你應該？",
+     "options": [
+      "先減速，並確認安全後再行駛。",
+      "按鳴喇叭或變換燈光，提醒該車輛讓你先通過。",
+      "直行車優先，預判對方會讓我先行。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h5838f6f98",
+   "no": 2,
+   "answer": 2,
+   "video": "202602",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOLWWVu0g030ejVfAj1FuItqdfmeU/qNiV4LIsdz6xRJJd0Uj9tom9NXRtarGw-PrKAvgujOw0",
+   "text": {
+    "en": {
+     "q": "When passing through an unsignalized intersection, you notice a motorcycle approaching from the side without slowing down. What should you do?",
+     "options": [
+      "Speed up to pass and avoid conflict with the other vehicle.",
+      "Vehicles going straight have priority; assume the other party will yield to me.",
+      "Slow down and prepare to stop."
+     ]
+    },
+    "zh-Hant": {
+     "q": "行經無號誌路口時，發現橫向有機車接近且未減速，你應該？",
+     "options": [
+      "加速通過避免與對方衝突。",
+      "直行車優先，應預判對方會讓我先行。",
+      "減速並預作停車之準備。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "hfc6152eaf",
+   "no": 3,
+   "answer": 1,
+   "video": "202603",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18WqUzA66D7uWe8DGp9LpkNQkBbovX74/gmRmhBleoWTWGUY6QvoWrFKW7YKXpYx0-cbsgrk8EQA0",
+   "text": {
+    "en": {
+     "q": "You notice a vehicle approaching from behind and displaying its turn signal in your rearview mirror. What should you do?",
+     "options": [
+      "Speed up and drive away to avoid conflict with the other vehicle.",
+      "Release the accelerator and slow down to respond.",
+      "The other vehicle may not affect me, so there is no need to pay attention."
+     ]
+    },
+    "zh-Hant": {
+     "q": "從照後鏡中發現有車輛接近並顯示方向燈，你應該？",
+     "options": [
+      "加速駛離避免與對方衝突。",
+      "放開油門減速因應。",
+      "對方不一定會影響我，不必理會。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h25a51e939",
+   "no": 4,
+   "answer": 0,
+   "video": "202604",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18WqV0v64BdGmS7Xzd5ZREbF4ff7J0sL/sFnMTn9_OBH29Ify0dFm7cly_Nr1HPDz-FLzg8lQEQA0",
+   "text": {
+    "en": {
+     "q": "When starting on a green light, you notice a vehicle from the cross direction showing no sign of slowing down and rapidly approaching the intersection. What should you do?",
+     "options": [
+      "Delay starting and brake to a stop; proceed only after confirming the cross-traffic vehicle has stopped or passed.",
+      "Assume the other vehicle will stop at the intersection, and start at normal speed.",
+      "Since the light is green for me, start immediately and honk to remind the other vehicle to stop."
+     ]
+    },
+    "zh-Hant": {
+     "q": "綠燈起步時，發現橫向的車輛似乎沒有減速跡象，並快速逼近路口，你應該？",
+     "options": [
+      "暫緩起步並煞停，確認該橫向車輛停下或通過後再行駛。",
+      "預判對方會於路口煞停，維持正常速度起步即可。",
+      "因為我是綠燈，應立即起步並按喇叭提醒對方停車。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "ha79bec7c2",
+   "no": 5,
+   "answer": 1,
+   "video": "202605",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCO8LsZho7HoGZ4M1DmMMVbMnhK4di/DElLZdVFNCTfxFa5uxfVRdGn9Z-2FVqi-kbQgBDejOw0",
+   "text": {
+    "en": {
+     "q": "Please identify the blind spot in the video from which a vehicle may emerge.",
+     "options": [
+      "The pillar on the sidewalk.",
+      "Behind the oncoming vehicle.",
+      "Parked vehicles on the roadside."
+     ]
+    },
+    "zh-Hant": {
+     "q": "請選出影片中的視線遮蔽處，可能會有車輛駛出？",
+     "options": [
+      "人行道上的柱子。",
+      "對向車輛的後方。",
+      "路旁的停車。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "hacccb9f95",
+   "no": 6,
+   "answer": 0,
+   "video": "202606",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOAPkroD3cj86oVvdHh6eAzfbDwru/t_HVnpaqDHFTtPAFGdL04-nhnwYk09ig-C7WgnUCjOw0",
+   "text": {
+    "en": {
+     "q": "When turning right, there are pedestrians crossing on the pedestrian crosswalk at the intersection. What should you do?",
+     "options": [
+      "Slow down and stop temporarily to let the pedestrians pass first.",
+      "Maintain speed and pass before the pedestrians enter your driving path.",
+      "Honk to remind the pedestrians that your vehicle goes first."
+     ]
+    },
+    "zh-Hant": {
+     "q": "右轉時，路口的行人穿越道上有行人通行，你應該？",
+     "options": [
+      "減速暫停讓行人先行。",
+      "保持速度，並在行人進入本車行駛路線前通過。",
+      "按鳴喇叭，提醒行人本車先行。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h516816555",
+   "no": 7,
+   "answer": 2,
+   "video": "202607",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOCaRX28pQteNbFtxtHYUPbBi84xy/3oL6s21agbgdR5rV9HH7chZJwOSiTsD0-kLXAhEqjOw0",
+   "text": {
+    "en": {
+     "q": "A pedestrian on the roadside may cross the road. What should you do?",
+     "options": [
+      "Honk or flash your lights to warn the pedestrian.",
+      "Maintain speed and swerve around them directly.",
+      "Slow down in advance and let the pedestrian cross first."
+     ]
+    },
+    "zh-Hant": {
+     "q": "路邊有行人可能會穿越道路，你應該？",
+     "options": [
+      "按鳴喇叭或變換燈光以警示行人。",
+      "保持速度，直接閃避。",
+      "預先減速，讓行人先通行。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h602f48159",
+   "no": 8,
+   "answer": 0,
+   "video": "202608",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOEqNl69CLEiUJONpbCaxLmCl6P9W/EILxeP4ao1SJ6oBisHfPSQDDKtWGHyf9-2bUg6lGjOw0",
+   "text": {
+    "en": {
+     "q": "While driving on a freeway, the vehicle ahead to your right changes lanes to the left. What should you do?",
+     "options": [
+      "First judge whether the safe distance is sufficient and slow down in advance.",
+      "No need to pay attention; the other driver will judge the safe distance from your vehicle on their own.",
+      "Honk or continuously flash your lights to remind the other driver that you go first."
+     ]
+    },
+    "zh-Hant": {
+     "q": "行駛在高速公路上，右前方的車輛向左變換車道，你應該？",
+     "options": [
+      "先判斷安全距離是否足夠，並預先減速。",
+      "不須理會，對方會自行判斷與本車的安全距離。",
+      "按鳴喇叭或連續變換燈光，提醒對方你要先行。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "hf7fcb15b3",
+   "no": 9,
+   "answer": 2,
+   "video": "202609",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOGIn022s96VEEEmpm41FTs0bSJqe/ebOEiu66XWZGZMXiOTEYNr8zqRutUXpt-gLZgqlyjOw0",
+   "text": {
+    "en": {
+     "q": "When preparing to pull away from the roadside, what should you do?",
+     "options": [
+      "Use the rearview mirror to confirm there are no vehicles approaching from behind.",
+      "Activate the turn signal.",
+      "All of the above."
+     ]
+    },
+    "zh-Hant": {
+     "q": "準備在路邊起駛時，你應該？",
+     "options": [
+      "利用照後鏡確認後方沒有來車。",
+      "顯示方向燈。",
+      "以上皆是。"
+     ]
+    }
+   }
+  },
+  {
+   "id": "h5d89b67a6",
+   "no": 10,
+   "answer": 2,
+   "video": "202610",
+   "videoUrl": "https://space2.thb.gov.tw/d/s/18RCOHWihKbDJm2hAaqdqCjJXj54t40x/U174b78Ed4R-7xaae5f6OSyNxdFBfn4O--LagTGajOw0",
+   "text": {
+    "en": {
+     "q": "When preparing to make a left turn from the roadside, what should you do?",
+     "options": [
+      "Activate the turn signal.",
+      "Confirm there are no pedestrians on the pedestrian crosswalk.",
+      "All of the above."
+     ]
+    },
+    "zh-Hant": {
+     "q": "準備在路邊左轉彎時，你應該？",
+     "options": [
+      "顯示方向燈",
+      "確認行人穿越道線上沒有行人",
+      "以上皆是。"
+     ]
+    }
+   }
+  }
+ ]
+}
