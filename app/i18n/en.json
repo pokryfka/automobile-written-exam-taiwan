@@ -49,6 +49,9 @@
   "home.allTopics": "All topics",
   "home.filtersHint": "Section and topic apply to practice modes; the mock exam always uses the whole bank.",
   "home.noSync": "Stats are only on this device. Set up sync in ⚙️ to share them between your devices.",
+  "home.official": "Official practice test",
+  "home.officialHelp": "The Highway Bureau's online practice tests for cars and motorcycles (交通部公路局汽機車線上隨機模擬考系統).",
+  "home.officialOpen": "Open the official practice test ↗",
   "home.noWeak": "No wrong or unsure answers yet, nice!",
   "home.nothingLeft": "Nothing left in this mode.",
 

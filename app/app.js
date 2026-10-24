@@ -4,6 +4,8 @@
 const STATS_FILE = 'taiwan-car-exam-stats.json';
 const REPO_URL = 'https://github.com/pokryfka/car-exam-tw';
 const SUPPORT_URL = REPO_URL + '/issues';
+// The Highway Bureau's own online mock exam for cars and motorcycles.
+const OFFICIAL_PRACTICE_URL = 'https://www.mvdis.gov.tw/m3-simulator-drv/index';
 // Mock exam rules of the car written test since 30 June 2026 (民國115年6月30日), as on the
 // Highway Bureau's practice test: 50 random questions, including 5 hazard-perception video
 // questions, 2 points each, 85 points to pass.
@@ -643,6 +645,10 @@ function homeView() {
       }, h('option', { value: '' }, t('home.allTopics')),
       topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, topicName(c)))),
       h('p', { class: 'muted' }, t('home.filtersHint'))),
+    h('div', { class: 'card' },
+      h('h2', {}, t('home.official')),
+      h('p', { class: 'muted' }, t('home.officialHelp')),
+      h('a', { class: 'btn link-btn', href: OFFICIAL_PRACTICE_URL, target: '_blank', rel: 'noopener' }, t('home.officialOpen'))),
     !sync.backend() && h('div', { class: 'card' },
       h('p', { class: 'muted' }, t('home.noSync'))),
   );
