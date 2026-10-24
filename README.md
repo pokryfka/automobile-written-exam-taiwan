@@ -1,14 +1,13 @@
 # Taiwan Car Written Exam Practice
 
-A small web app for practising Taiwan's automobile written-exam question bank (汽車筆試題庫,
-1090 questions) in Chinese and English. It works in any modern browser, on phones, tablets and
-computers, works offline, remembers which questions you get wrong, and can sync your progress
-between devices.
+Practise for Taiwan's car driving licence written test (汽車筆試) with the official question
+bank: 1090 questions in Chinese and English. The app works in any modern browser on phones,
+tablets and computers. It also works offline, remembers which questions you get wrong, and
+can sync your progress between your devices.
 
 **Open the app:** https://car-exam-tw.pokryfka.workers.dev
 
-> Version 1.0.0 is still available at https://pokryfka.github.io/automobile-written-exam-taiwan/
-> but no longer updated.
+It's free, and you don't need an account.
 
 ## Install it as an app
 
@@ -17,182 +16,120 @@ Open the link above, then add it to your home screen or install it:
 - **Chrome on Android:** tap **⋮** → **Add to Home screen** (or **Install app**).
 - **Chrome or Edge on a computer:** click the install icon in the address bar.
 
-It then opens in its own window and keeps working offline.
+It then opens in its own window and keeps working without an internet connection.
 
-> On some devices the installed app and the browser tab keep separate data. Use the installed
-> app and set up sync (below) so your progress is never lost.
+> On some devices the installed app and the browser tab keep separate progress. Use the
+> installed app, and set up [sync](#syncing-between-your-devices) so your progress is never lost.
 
 ## Practising
 
+Pick a mode on the home screen:
+
 | Mode | What it does |
 |---|---|
-| 🎯 **Smart** | About 60% questions you have failed (the weakest come up most often), the rest mostly new ones |
-| 🔥 **Mistakes** | Only questions you have answered wrong and not yet mastered |
+| 🎯 **Smart** | Mostly questions you got wrong before (the hardest ones come up most often), plus new ones |
+| 🔥 **Mistakes** | Only questions you got wrong and haven't mastered yet |
 | 🆕 **New** | Questions you have never answered |
 | 🎲 **Random** | Any question |
 | 📝 **Mock exam** | 40 random questions from the whole bank, 85 points to pass |
-| 📊 **Weak list** | Your 50 most-failed questions, with a button to practise them |
+| 📊 **Weak list** | Your 50 most-missed questions, with a button to practise them |
 
-- After each answer the app shows whether you were right and highlights the correct option.
-- A question counts as **mastered** once your last 3 answers to it were correct. Mastered
-  questions come up rarely, and a new mistake brings them back.
+- After each answer you see whether you were right, and the correct answer is highlighted.
+- A question counts as **mastered** once you have answered it correctly 3 times in a row.
+  Mastered questions come up rarely, and a new mistake brings them back.
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
-- Switch any question and its answers between **Chinese (中文)** and a second language with the
-  **中文 / EN** toggle above it. The next question opens in the language you used last.
-  Chinese is always available. The second language is English unless you pick another one in
-  ⚙️ → **Question languages** once more languages are added. The rest of the app is in English.
+- Choose how many questions a session has: 10, 20, 40 or 80.
 
-## Syncing between devices
+> **The test has changed.** Since 30 June 2026 (民國115年6月30日) the real test has 50
+> questions, including 5 hazard-perception video questions. The mock exam still uses the
+> previous format.
 
-Your stats are saved on each device. To share them between devices, tap ⚙️ and pick a
-**Sync method**:
+## Languages
 
-| Method | Needs | Where the stats are stored |
+Each question and its answers can be shown in **Chinese (中文)** or a **second language**.
+Tap **中文 / EN** above the question to switch. The next question opens in the language you
+used last.
+
+- Chinese is always available. The second language is English, and more languages may be
+  added later. You choose the second language in ⚙️ → **Question languages**.
+- The app's buttons and menus are in English.
+- The Chinese and English editions of the official bank were published at different times.
+  You can see each edition in ⚙️ → **Data**. In the current editions, 4 question numbers
+  (#52, #164, #913 and #1036) have different questions in each language, so those 4 are
+  shown in English only.
+
+## Syncing between your devices
+
+Your progress is saved on each device. To share it between your phone, tablet or computer,
+tap ⚙️ and choose a **Sync method**:
+
+| Method | You need | Where your progress is kept |
 |---|---|---|
-| **Sync code** (simplest) | Nothing | This app's server, under a random code |
-| **GitHub Gist** | A GitHub account | A private gist in your own GitHub account |
+| **Sync code** (easiest) | Nothing | On this app's server, under a private code |
+| **GitHub Gist** | A GitHub account | In a private file in your own GitHub account |
 
 ### Sync code
 
-1. On the first device, choose **Sync code** and tap **Create a new code**. You get a code
+1. On your first device, choose **Sync code** and tap **Create a new code**. You get a code
    like `MBD8-D3CN-FCD3`.
-2. On each other device, choose **Sync code**, type the code under **Use an existing code**
-   and tap **Link this device**. Capitals, dashes and spaces don't matter. **Copy** and, where your
-   browser supports it, **Share** help you send the code to your other device.
+2. On each other device, choose **Sync code**, type the code under **Use an existing code**,
+   and tap **Link this device**. Capital letters, dashes and spaces don't matter. **Copy**, and
+   **Share** where your browser supports it, help you send the code to your other device.
 
-Anyone with the code can see and change those stats, so keep it private. The server stores
-only a hash of the code, not the code itself, so write it down: it cannot be recovered.
+**Keep the code private:** anyone who has it can see and change your progress. **Write it
+down:** if you lose it, nobody can look it up for you.
 
 ### GitHub Gist
 
 1. On GitHub, open **Settings → Developer settings → Personal access tokens →
    [Fine-grained tokens](https://github.com/settings/personal-access-tokens/new)**.
 2. Create a token with **Account permissions → Gists: Read and write** and nothing else.
-   Pick an expiry, for example one year. A classic token with only the `gist` scope also works.
-3. In the app, choose **GitHub Gist**, paste the token and tap **Save & sync now**.
-   The first device creates a gist named `taiwan-car-exam-stats.json`.
-4. Paste the same token on your other device. It finds the same gist automatically.
+   Pick an expiry, for example one year. A classic token with only the `gist` permission also works.
+3. In the app, choose **GitHub Gist**, paste the token, and tap **Save & sync now**.
+4. Paste the same token on your other devices. They find your progress automatically.
 
-The token stays on the device and is sent only to `api.github.com`. When it expires,
-create a new one and paste it on each device; your stats stay in the gist.
+When the token expires, create a new one and paste it on each device. Your progress stays
+in your GitHub account.
 
 ### How sync works
 
-- Sync runs on its own: a few seconds after you answer, when you leave the app and when
-  you open it. The dot in the top bar shows the status (green = synced, yellow = syncing,
-  red = failed; tap ⚙️ to see the error). Answers made offline sync once you are online.
-- Each device writes only its own entry, so two devices can never overwrite each other's
-  answers. The app adds the entries together for your stats.
-- Only numbers are stored per question: times right, times wrong, your last 5 results and
-  when you last answered it, plus the device name you choose.
+- Sync happens by itself: a few seconds after you answer, when you leave the app, and when
+  you open it. The dot in the top bar shows the status: green means synced, yellow means
+  syncing, and red means sync failed (tap ⚙️ to see why).
+- If you practise offline, your answers sync the next time you're online.
+- Your devices can't overwrite each other's progress. The app adds up the answers from all
+  your devices.
 
-## Updating the question bank
+## Privacy
 
-The questions come from the official PDFs published by the Highway Bureau (公路局), MOTC, on its
-[car question bank page](https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823). Extract the
-English edition first, since it defines the question ids, answers and pictures, then each further
-language:
+- The app has no accounts, ads or analytics.
+- **Without sync**, your progress stays on your device.
+- **With sync**, only your practice results are stored: for each question, how often you got
+  it right or wrong, your last 5 answers and when you last answered it, plus the device names
+  you choose. Nothing else about you is stored.
+- With a **sync code**, the server keeps your results under a scrambled form of the code, not
+  the code itself.
+- With a **GitHub Gist**, your results are stored only in your own GitHub account. Your token
+  stays on your device and is only sent to GitHub.
 
-```sh
-pip install pdfplumber
-python3 tools/extract_questions.py --lang en      english.pdf
-python3 tools/extract_questions.py --lang zh-Hant chinese.pdf
-```
+## Where the questions come from
 
-| File | Contents |
-|---|---|
-| `app/data/bank.json` | Language-neutral: id, number, answer, section and topic keys, pictures, list of languages |
-| `app/data/text/<lang>.json` | Question and option text plus section and topic names, keyed by question id |
-| `app/data/images/` | Pictures, taken from the English edition and shared by all languages |
+The questions, answers and pictures come from the official question bank PDFs published by
+the Highway Bureau (公路局), Ministry of Transportation and Communications, on its
+[car question bank page](https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823).
 
-Rules the script follows:
-- **Question ids** are a hash of the English text and pictures, so your stats carry over to a new
-  edition for every question that did not change.
-- **Other languages** are matched to English by question number, and the script stops if any
-  number is missing, or if an answer or the number of pictures differs.
-- **Mismatched questions:** some numbers hold a different question in different editions.
-  These are listed in `MISMATCHED` in the script after comparing all questions by hand, and are
-  shown in English only. For the Chinese edition 115.5.29 that is #52, #164, #913 and #1036.
-- **Duplicates:** questions that appear twice in the bank are merged into one, and the extra
-  number is listed in `also`.
+## Feedback
 
-To add another language, such as Japanese (`ja`) or Indonesian (`id`):
-1. Run the script with that code.
-2. Compare the questions with English and list any mismatches in `MISMATCHED`.
-3. Check that the language's name is in `LANGUAGE_NAMES`.
-
-**Editions:**
-- The script reads each language's edition from its PDF ("Year 115 edition, announced June 2026", "115.5.29").
-- It records the edition with the question count in `bank.json`, and the app shows them in ⚙️ → Data.
-- If the edition can't be found, pass it with `--edition`.
-
-Use `--debug <page>` to see how the script reads one page.
-
-## Development
-
-The app in `app/` is plain HTML, CSS and JavaScript with no build step. It is served by a
-[Cloudflare Worker](https://developers.cloudflare.com/workers/) (`worker/`, TypeScript) that
-also provides the sync API, backed by a [D1](https://developers.cloudflare.com/d1/) (SQLite)
-database.
-
-```sh
-npm ci
-npx wrangler d1 migrations apply car-exam-tw --local   # create the local database
-npm run dev                                            # http://localhost:8787
-npm test                                               # app unit tests + Worker tests
-npm run typecheck
-```
-
-| Path | Contents |
-|---|---|
-| `app/index.html`, `app/styles.css` | Page and styles |
-| `app/app.js` | Screens, local storage and both sync methods |
-| `app/core.js` | Stats merging and question selection (also used by the tests) |
-| `app/sw.js` | Service worker that caches the app and all pictures for offline use |
-| `app/data/` | Extracted questions and pictures |
-| `worker/src/index.ts` | Sync API (`GET /api/sync/:code`, `PUT /api/sync/:code/:deviceId`); other paths serve `app/` |
-| `worker/test/` | Worker tests, run inside the Workers runtime with a local D1 database |
-| `migrations/` | D1 schema migrations |
-| `wrangler.jsonc` | Worker configuration for production and QA |
-| `tools/extract_questions.py` | PDF → `bank.json` and `text/<lang>.json` extractor |
-| `tests/` | Unit tests for `app/core.js` and consistency checks for `app/data/` |
-
-After changing `wrangler.jsonc`, run `npm run types` to regenerate
-`worker/worker-configuration.d.ts`.
-
-## Deployment
-
-Changes go through pull requests. [`.github/workflows/deploy.yml`](.github/workflows/deploy.yml)
-runs the type check and tests on every pull request and push, then deploys:
-
-| Environment | URL | Database | Deployed when |
-|---|---|---|---|
-| QA | https://car-exam-tw-qa.pokryfka.workers.dev | `car-exam-tw-qa` | A pull request is opened or updated |
-| Production | https://car-exam-tw.pokryfka.workers.dev | `car-exam-tw` | A pull request is merged to `main` |
-
-Each deploy first applies new migrations from `migrations/` to that environment's database.
-Pull requests from forks run the tests only.
-
-**Settings, all in `wrangler.jsonc`:**
-- Worker names and database names and IDs for each environment.
-- Rate limit: requests per minute per client IP to the sync API.
-- `MAX_BODY_BYTES`: the largest upload accepted.
-- `MAX_DEVICES_PER_CODE`: how many devices can share one sync code.
-
-**Running your own copy:**
-
-1. Create two D1 databases in your Cloudflare account and put their names and IDs in
-   `wrangler.jsonc`. Change the Worker `name` if you like.
-2. Change the rate-limit `namespace_id`s if they clash with ones already in your account.
-3. Create a Cloudflare API token from the **Edit Cloudflare Workers** template with
-   **Account → D1 → Edit** added.
-4. In the GitHub repository, add the secrets `CLOUDFLARE_API_TOKEN` and
-   `CLOUDFLARE_ACCOUNT_ID`.
-5. Update the environment URLs in `.github/workflows/deploy.yml` to match your
-   `workers.dev` subdomain.
+Found a wrong answer, a typo or a bug? Please
+[open an issue](https://github.com/pokryfka/automobile-written-exam-taiwan/issues).
 
 ## Disclaimer
 
-This is an unofficial study aid. The question bank belongs to the Highway Bureau, MOTC,
-Taiwan. Always check the latest official edition before your exam.
+This is an unofficial study aid, not affiliated with the Highway Bureau. Always check the
+latest official question bank and rules before your test.
+
+---
+
+For developers: see [DEVELOPMENT.md](DEVELOPMENT.md) for how the app is built, tested and
+deployed, and how the question bank is updated.
