@@ -31,6 +31,7 @@ const state = {
   text: {}, // language code -> { sections, topics, questions: { [id]: { q, options } } }
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
+    uiLang: '', // interface language; '' = from the browser's preferred languages
     secondLang: 'en', // language offered next to Chinese on each question
     questionLang: 'en', // language the next question opens in
   }, store.get('settings', {})),
@@ -44,13 +45,68 @@ if (!/^[a-z0-9]{4,32}$/.test(state.deviceId || '')) {
 }
 // Before sync codes existed, a saved token meant Gist sync.
 if (!state.settings.syncMode && state.settings.token) state.settings.syncMode = 'gist';
-if (!state.settings.deviceName) {
-  // A touch screen as the main pointer means a phone or tablet; the smaller screen side tells them apart.
-  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
-  state.settings.deviceName = !touch ? 'Computer' : Math.min(screen.width, screen.height) < 600 ? 'Phone' : 'Tablet';
+function saveSettings() { store.set('settings', state.settings); }
+
+// ---------- interface language ----------
+// Interface strings live in one file per language (i18n/<code>.json), with {name} placeholders.
+// English is always loaded as the fallback for strings missing in another language.
+// To add a language: add its file and an entry here.
+
+const UI_LANGS = [
+  { code: 'en', name: 'English', locale: 'en' },
+  { code: 'zh-Hant', name: '繁體中文（台灣）', locale: 'zh-TW' },
+];
+
+const ui = { lang: 'en', strings: {}, fallback: {} };
+
+function t(key, vars) {
+  const s = ui.strings[key] ?? ui.fallback[key] ?? key;
+  return vars ? s.replace(/\{(\w+)\}/g, (m, k) => (k in vars ? vars[k] : m)) : s;
 }
 
-function saveSettings() { store.set('settings', state.settings); }
+function uiLocale() {
+  return (UI_LANGS.find(l => l.code === ui.lang) || UI_LANGS[0]).locale;
+}
+
+// The saved choice, else the first supported language the browser prefers (any Chinese -> Traditional), else English.
+function preferredUiLang() {
+  if (UI_LANGS.some(l => l.code === state.settings.uiLang)) return state.settings.uiLang;
+  for (const pref of navigator.languages || [navigator.language || '']) {
+    if (/^zh\b/i.test(pref)) return 'zh-Hant';
+    if (/^en\b/i.test(pref)) return 'en';
+  }
+  return 'en';
+}
+
+async function loadStrings(code) {
+  try {
+    const res = await fetch('i18n/' + code + '.json');
+    return res.ok ? await res.json() : null;
+  } catch (e) {
+    return null; // offline and not cached yet
+  }
+}
+
+async function setUiLang(code) {
+  if (!Object.keys(ui.fallback).length) ui.fallback = (await loadStrings('en')) || {};
+  const strings = code === 'en' ? ui.fallback : await loadStrings(code);
+  if (!strings) return false;
+  ui.lang = code;
+  ui.strings = strings;
+  document.documentElement.lang = uiLocale();
+  document.title = t('app.title');
+  document.getElementById('title').textContent = t('app.title');
+  document.querySelector('[data-view=home]').setAttribute('aria-label', t('nav.home'));
+  document.querySelector('[data-view=settings]').setAttribute('aria-label', t('nav.settings'));
+  document.getElementById('sync-dot').title = sync.lastMessage || t('sync.statusLabel');
+  return true;
+}
+
+function defaultDeviceName() {
+  // A touch screen as the main pointer means a phone or tablet; the smaller screen side tells them apart.
+  const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+  return t(!touch ? 'device.computer' : Math.min(screen.width, screen.height) < 600 ? 'device.phone' : 'device.tablet');
+}
 
 function randomString(alphabet, length) {
   const bytes = crypto.getRandomValues(new Uint8Array(length));
@@ -67,8 +123,8 @@ function allStats() {
 // Question text lives in one file per language (data/text/<code>.json), keyed by question id.
 // Each question can be switched between Chinese, the official language of the test, and one
 // second language chosen in settings. English, the reference edition of the extracted data,
-// is always loaded: the interface uses its section and topic names, and it is the fallback
-// for questions missing in the other languages.
+// is always loaded: it is the fallback for questions, section names and topic names missing
+// in the other languages. The interface language is chosen separately (see above).
 
 const REFERENCE_LANG = 'en';
 const PRIMARY_LANG = 'zh-Hant';
@@ -101,21 +157,34 @@ function qText(q, lang) {
   return textFor(q, shownLang(q, lang || state.settings.questionLang));
 }
 
+// Short label for the question language toggle.
 function langLabel(code) {
   if (code === REFERENCE_LANG) return 'EN';
   const l = state.languages.find(x => x.code === code);
   return l ? l.name : code;
 }
 
-// Section and topic names follow the interface, which is English only.
+// Language name in the interface language, for sentences and settings.
+function langName(code) {
+  const name = t('lang.' + code);
+  return name === 'lang.' + code ? langLabel(code) : name;
+}
+
+// Section and topic names follow the interface language when the question bank has them.
+function bankName(kind, key) {
+  for (const code of [ui.lang, REFERENCE_LANG]) {
+    const text = state.text[code];
+    if (text && text[kind][key]) return text[kind][key];
+  }
+  return key;
+}
+
 function sectionName(key) {
-  const t = state.text[REFERENCE_LANG];
-  return (t && t.sections[key]) || key;
+  return bankName('sections', key);
 }
 
 function topicName(key) {
-  const t = state.text[REFERENCE_LANG];
-  return (t && t.topics[key]) || key;
+  return bankName('topics', key);
 }
 
 async function loadText(code) {
@@ -168,11 +237,7 @@ const gist = {
       cache: 'no-store',
     }));
     if (!res.ok) {
-      const hint = {
-        401: 'GitHub does not recognise this token. Check it was copied completely, or create a new one.',
-        403: 'The token is missing the "Gists: Read and write" permission.',
-        404: 'The token is missing the "Gists: Read and write" permission, or the gist was deleted.',
-      }[res.status];
+      const hint = [401, 403, 404].includes(res.status) && t('gist.error' + res.status);
       throw new Error('GitHub ' + res.status + (hint ? ': ' + hint : ' ' + (await res.text()).slice(0, 120)));
     }
     return res.json();
@@ -249,7 +314,7 @@ const sync = {
     const backend = sync.backend();
     if (!backend || sync.busy || !navigator.onLine) return;
     sync.busy = true;
-    sync.status('busy', 'Syncing…');
+    sync.status('busy', t('sync.syncing'));
     try {
       const entry = { name: state.settings.deviceName, updated: Date.now(), stats: state.myStats };
       const doc = await backend.push(entry);
@@ -257,10 +322,10 @@ const sync = {
       state.remoteDoc = doc;
       store.set('remoteDoc', doc);
       store.set('lastSync', Date.now());
-      sync.status('ok', 'Synced ' + new Date().toLocaleTimeString());
+      sync.status('ok', t('sync.synced', { time: new Date().toLocaleTimeString(uiLocale()) }));
       if (state.view === 'home') homeView();
     } catch (e) {
-      sync.status('err', 'Sync failed: ' + e.message);
+      sync.status('err', t('sync.failed', { error: e.message }));
     } finally {
       sync.busy = false;
     }
@@ -307,7 +372,8 @@ function render(...nodes) {
 }
 
 function questionLabel(q) {
-  return '#' + q.no + (q.also ? ' (also #' + q.also.join(', #') + ')' : '') + (q.topic ? ' · ' + topicName(q.topic).replace(/\s*\(.*\)$/, '') : '');
+  return '#' + q.no + (q.also ? ' (' + t('question.also', { numbers: q.also.join(', #') }) + ')' : '')
+    + (q.topic ? ' · ' + topicName(q.topic).replace(/\s*[(（].*[)）]$/, '') : '');
 }
 
 // ---------- views ----------
@@ -316,8 +382,8 @@ function homeView() {
   state.view = 'home';
   if (!state.questions.length) {
     return render(h('div', { class: 'card' },
-      h('h2', {}, 'No question bank loaded'),
-      h('p', {}, 'app/data/bank.json is missing or empty. Run tools/extract_questions.py on the official PDF (see README).')));
+      h('h2', {}, t('home.noBank')),
+      h('p', {}, t('home.noBankHelp'))));
   }
   const stats = allStats();
   const qs = pool();
@@ -332,7 +398,7 @@ function homeView() {
   const start = (mode) => () => {
     const picked = Core.pickQuestions(qs, stats, mode, len);
     if (!picked.length) {
-      alert(mode === 'weak' ? 'No failed questions yet, nice!' : 'Nothing left in this mode.');
+      alert(t(mode === 'weak' ? 'home.noWeak' : 'home.nothingLeft'));
       return;
     }
     startSession(picked.map(q => q.id), mode, false);
@@ -341,43 +407,43 @@ function homeView() {
   render(
     h('div', { class: 'card' },
       h('div', { class: 'stats-row' },
-        h('div', {}, h('b', {}, s.seen), h('span', {}, 'seen / ' + s.total)),
-        h('div', {}, h('b', {}, s.mastered), h('span', {}, 'mastered')),
-        h('div', {}, h('b', {}, s.weak), h('span', {}, 'to review')),
-        h('div', {}, h('b', {}, accuracy), h('span', {}, 'accuracy'))),
+        h('div', {}, h('b', {}, s.seen), h('span', {}, t('home.seen', { total: s.total }))),
+        h('div', {}, h('b', {}, s.mastered), h('span', {}, t('home.mastered'))),
+        h('div', {}, h('b', {}, s.weak), h('span', {}, t('home.toReview'))),
+        h('div', {}, h('b', {}, accuracy), h('span', {}, t('home.accuracy')))),
       h('div', { class: 'progress' }, h('div', { style: 'width:' + pct + '%' })),
-      h('p', { class: 'muted' }, pct + '% mastered (last 3 answers correct)')),
+      h('p', { class: 'muted' }, t('home.masteredPct', { pct }))),
     h('div', { class: 'card' },
-      h('h2', {}, 'Practice'),
+      h('h2', {}, t('home.practice')),
       h('div', { class: 'modes' },
-        h('button', { onclick: start('smart') }, h('b', {}, '🎯 Smart'), h('small', {}, 'Weak + new mixed')),
-        h('button', { onclick: start('weak') }, h('b', {}, '🔥 Mistakes'), h('small', {}, 'Most failed first')),
-        h('button', { onclick: start('unseen') }, h('b', {}, '🆕 New'), h('small', {}, 'Never answered')),
-        h('button', { onclick: start('random') }, h('b', {}, '🎲 Random'), h('small', {}, 'Any question')),
+        h('button', { onclick: start('smart') }, h('b', {}, t('home.smart')), h('small', {}, t('home.smartHint'))),
+        h('button', { onclick: start('weak') }, h('b', {}, t('home.weak')), h('small', {}, t('home.weakHint'))),
+        h('button', { onclick: start('unseen') }, h('b', {}, t('home.unseen')), h('small', {}, t('home.unseenHint'))),
+        h('button', { onclick: start('random') }, h('b', {}, t('home.random')), h('small', {}, t('home.randomHint'))),
         h('button', {
           onclick: () => startSession(Core.pickExam(state.questions, EXAM_SIZE).map(q => q.id), 'exam', true),
-        }, h('b', {}, '📝 Mock exam'), h('small', {}, EXAM_SIZE + ' questions, pass ' + EXAM_PASS)),
-        h('button', { onclick: weakListView }, h('b', {}, '📊 Weak list'), h('small', {}, 'Your top mistakes'))),
-      h('label', { for: 'len' }, 'Questions per session'),
+        }, h('b', {}, t('home.exam')), h('small', {}, t('home.examHint', { size: EXAM_SIZE, pass: EXAM_PASS }))),
+        h('button', { onclick: weakListView }, h('b', {}, t('home.weakList')), h('small', {}, t('home.weakListHint')))),
+      h('label', { for: 'len' }, t('home.length')),
       h('select', {
         id: 'len',
         onchange: e => { state.settings.length = +e.target.value; saveSettings(); },
       }, [10, 20, 40, 80].map(n => h('option', { value: n, selected: n === len }, n))),
-      h('label', { for: 'section' }, 'Section'),
+      h('label', { for: 'section' }, t('home.section')),
       h('select', {
         id: 'section',
         onchange: e => { state.settings.section = e.target.value; state.settings.topic = ''; saveSettings(); homeView(); },
-      }, h('option', { value: '' }, 'All sections'),
+      }, h('option', { value: '' }, t('home.allSections')),
       sections.map(c => h('option', { value: c, selected: c === state.settings.section }, sectionName(c)))),
-      h('label', { for: 'topic' }, 'Topic'),
+      h('label', { for: 'topic' }, t('home.topic')),
       h('select', {
         id: 'topic',
         onchange: e => { state.settings.topic = e.target.value; saveSettings(); homeView(); },
-      }, h('option', { value: '' }, 'All topics'),
+      }, h('option', { value: '' }, t('home.allTopics')),
       topics.map(c => h('option', { value: c, selected: c === state.settings.topic }, topicName(c)))),
-      h('p', { class: 'muted' }, 'Section and topic apply to practice modes; the mock exam always uses the whole bank.')),
+      h('p', { class: 'muted' }, t('home.filtersHint'))),
     !sync.backend() && h('div', { class: 'card' },
-      h('p', { class: 'muted' }, 'Stats are only on this device. Set up sync in ⚙️ to share them between your devices.')),
+      h('p', { class: 'muted' }, t('home.noSync'))),
   );
 }
 
@@ -390,16 +456,16 @@ function weakListView() {
     .sort((a, b) => b.score - a.score)
     .slice(0, 50);
   render(h('div', { class: 'card' },
-    h('h2', {}, 'Most failed questions'),
+    h('h2', {}, t('weak.title')),
     rows.length
       ? [
-        h('button', { class: 'btn primary', style: 'width:100%;margin-bottom:10px', onclick: () => startSession(rows.slice(0, state.settings.length).map(x => x.q.id), 'weak', false) }, 'Practice these'),
+        h('button', { class: 'btn primary', style: 'width:100%;margin-bottom:10px', onclick: () => startSession(rows.slice(0, state.settings.length).map(x => x.q.id), 'weak', false) }, t('weak.practice')),
         h('table', { class: 'weak' }, rows.map(({ q, r }) => h('tr', {},
           h('td', {}, h('div', { class: 'muted' }, questionLabel(q)),
             (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })), qText(q).q),
           h('td', { class: 'num' }, '✗' + r.w + ' ✓' + r.c)))),
       ]
-      : h('p', { class: 'muted' }, 'No mistakes recorded yet.')));
+      : h('p', { class: 'muted' }, t('weak.none'))));
 }
 
 function startSession(ids, mode, exam) {
@@ -427,17 +493,17 @@ function questionView() {
 
   const buttons = choices.map((ch, i) => h('button', { onclick: () => choose(ch.value) },
     labels[i],
-    q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: 'Option ' + (i + 1) })));
+    q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: t('q.option', { n: i + 1 }) })));
 
   // Switch this question between languages; the choice becomes the default for the next question.
   const langs = enabledLangs();
-  const toggle = langs.length > 1 && h('div', { class: 'lang-toggle', role: 'group', 'aria-label': 'Question language' },
+  const toggle = langs.length > 1 && h('div', { class: 'lang-toggle', role: 'group', 'aria-label': t('q.languageGroup') },
     langs.map(code => {
       const available = !!textFor(q, code);
       return h('button', {
         'data-lang': code,
         disabled: !available,
-        title: available ? '' : 'This question is not available in ' + langLabel(code),
+        title: available ? '' : t('q.notAvailable', { language: langName(code) }),
         onclick: () => {
           state.settings.questionLang = code;
           saveSettings();
@@ -458,7 +524,7 @@ function questionView() {
   function showFeedback() {
     const correct = chosen === q.answer;
     feedback.className = 'feedback ' + (correct ? 'good' : 'bad');
-    feedback.textContent = correct ? '✓ Correct' : '✗ Wrong: answer is ' + optionLabel(q.answer);
+    feedback.textContent = correct ? t('q.correct') : t('q.wrong', { answer: optionLabel(q.answer) });
   }
 
   function choose(value) {
@@ -479,7 +545,7 @@ function questionView() {
       else if (ch.value === value) buttons[i].classList.add('wrong');
     });
     showFeedback();
-    actions.append(h('button', { class: 'btn primary', onclick: next }, s.idx + 1 < s.ids.length ? 'Next →' : 'Finish'));
+    actions.append(h('button', { class: 'btn primary', onclick: next }, t(s.idx + 1 < s.ids.length ? 'q.next' : 'q.finish')));
   }
 
   function next() {
@@ -493,9 +559,9 @@ function questionView() {
     h('div', { class: 'qmeta' },
       h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
       toggle,
-      h('span', {}, r ? '✗' + r.w + ' ✓' + r.c : 'new')),
+      h('span', {}, r ? '✗' + r.w + ' ✓' + r.c : t('q.new'))),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
-    (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: 'Question illustration' })),
+    (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: t('q.illustration') })),
     stem,
     h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
     feedback,
@@ -511,30 +577,30 @@ function resultView() {
   const score = total ? Math.round((right / total) * 1000) / 10 : 0;
 
   render(h('div', { class: 'card' },
-    h('h2', {}, s.exam ? 'Mock exam result' : 'Session done'),
+    h('h2', {}, t(s.exam ? 'result.examTitle' : 'result.sessionTitle')),
     h('div', { class: 'result-score ' + (s.exam ? (score >= EXAM_PASS ? 'pass' : 'fail') : '') }, s.exam ? score : right + ' / ' + total),
-    s.exam && h('p', { style: 'text-align:center' }, score >= EXAM_PASS ? 'Pass 🎉' : 'Below ' + EXAM_PASS + ', keep practising'),
+    s.exam && h('p', { style: 'text-align:center' }, score >= EXAM_PASS ? t('result.pass') : t('result.fail', { pass: EXAM_PASS })),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
-      const t = qText(q);
+      const text = qText(q);
       return h('tr', {}, h('td', {},
         h('div', { class: 'muted' }, questionLabel(q)),
         (q.images || []).map(src => h('img', { class: 'thumb', src: 'data/' + src, alt: '' })),
-        t.q,
-        h('div', { class: 'muted' }, 'Answer: (' + (q.answer + 1) + ') ' + t.options[q.answer]),
-        q.optionImages && h('img', { class: 'thumb', src: 'data/' + q.optionImages[q.answer], alt: 'Correct option' })));
+        text.q,
+        h('div', { class: 'muted' }, t('result.answer', { answer: '(' + (q.answer + 1) + ') ' + text.options[q.answer] })),
+        q.optionImages && h('img', { class: 'thumb', src: 'data/' + q.optionImages[q.answer], alt: t('result.correctOption') })));
     })),
     h('div', { class: 'actions' },
-      wrongIds.length > 0 && h('button', { class: 'btn', onclick: () => startSession(Core.shuffle(wrongIds, Math.random), 'retry', false) }, 'Retry mistakes'),
-      h('button', { class: 'btn primary', onclick: homeView }, 'Home'))));
+      wrongIds.length > 0 && h('button', { class: 'btn', onclick: () => startSession(Core.shuffle(wrongIds, Math.random), 'retry', false) }, t('result.retry')),
+      h('button', { class: 'btn primary', onclick: homeView }, t('result.home')))));
 }
 
 // Fine-grained tokens are "github_pat_" + 82 characters, classic ones "ghp_" + 36. Only used as a hint after a failed sync.
-function tokenProblem(t) {
-  if (!t) return '';
-  if (/^github_pat_\w{82}$/.test(t) || /^ghp_[A-Za-z0-9]{36}$/.test(t)) return '';
-  if (/^(github_pat_|ghp_)/.test(t)) return 'This token has ' + t.length + ' characters, expected ' + (t.startsWith('ghp_') ? 40 : 93) + '. It was probably not copied completely.';
-  return 'This does not look like a GitHub token. It should start with "github_pat_".';
+function tokenProblem(token) {
+  if (!token) return '';
+  if (/^github_pat_\w{82}$/.test(token) || /^ghp_[A-Za-z0-9]{36}$/.test(token)) return '';
+  if (/^(github_pat_|ghp_)/.test(token)) return t('gist.tokenLength', { length: token.length, expected: token.startsWith('ghp_') ? 40 : 93 });
+  return t('gist.tokenFormat');
 }
 
 function settingsView() {
@@ -543,7 +609,7 @@ function settingsView() {
   const status = h('p', { class: 'muted', id: 'sync-status' }, sync.lastMessage || '');
   // Sync, then redraw so the status and device list reflect the result.
   const syncNow = async () => {
-    status.textContent = 'Syncing…';
+    status.textContent = t('sync.syncing');
     await sync.run();
     if (state.view === 'settings') settingsView();
   };
@@ -557,7 +623,7 @@ function settingsView() {
     id: 'sync-mode',
     onchange: e => {
       if (state.settings.syncMode === 'code' && state.settings.syncCode && e.target.value !== 'code'
-        && !confirm('Stop using sync code ' + formatCode(state.settings.syncCode) + ' on this device? Write it down if you want to link again later.')) {
+        && !confirm(t('settings.stopCode', { code: formatCode(state.settings.syncCode) }))) {
         e.target.value = state.settings.syncMode;
         return;
       }
@@ -565,30 +631,51 @@ function settingsView() {
       settingsView();
     },
   },
-  h('option', { value: '', selected: !mode }, 'Off: stats stay on this device'),
-  h('option', { value: 'code', selected: mode === 'code' }, 'Sync code: no account needed'),
-  h('option', { value: 'gist', selected: mode === 'gist' }, 'GitHub Gist: stored in your GitHub account'));
+  h('option', { value: '', selected: !mode }, t('settings.syncOff')),
+  h('option', { value: 'code', selected: mode === 'code' }, t('settings.syncCode')),
+  h('option', { value: 'gist', selected: mode === 'gist' }, t('settings.syncGist')));
 
   render(
     h('div', { class: 'card' },
-      h('h2', {}, 'Sync between devices'),
-      h('label', { for: 'sync-mode' }, 'Sync method'), modeSelect,
+      h('label', { for: 'ui-lang', class: 'first' }, t('settings.appLanguage')),
+      h('select', {
+        id: 'ui-lang',
+        onchange: async e => {
+          const code = e.target.value;
+          if (!(await setUiLang(code))) {
+            alert(t('settings.downloadFailed', { language: UI_LANGS.find(l => l.code === code).name }));
+            e.target.value = ui.lang;
+            return;
+          }
+          state.settings.uiLang = code;
+          saveSettings();
+          settingsView();
+        },
+      }, UI_LANGS.map(l => h('option', { value: l.code, selected: l.code === ui.lang }, l.name)))),
+    h('div', { class: 'card' },
+      h('h2', {}, t('settings.syncTitle')),
+      h('label', { for: 'sync-mode' }, t('settings.syncMethod')), modeSelect,
       mode === 'code' && codeSettings(status, syncNow),
       mode === 'gist' && gistSettings(),
-      mode && [h('label', { for: 'dname' }, 'This device name'), name],
+      mode && [h('label', { for: 'dname' }, t('settings.deviceName')), name],
       mode && status,
-      mode && devices.length > 0 && h('p', { class: 'muted' }, 'Devices: ' + devices.map(([id, d]) =>
-        (d.name || id) + (id === state.deviceId ? ' (this)' : '') + ' – ' + Object.keys(d.stats || {}).length + ' answered').join(', '))),
+      mode && devices.length > 0 && h('p', { class: 'muted' }, t('settings.devices', {
+        list: devices.map(([id, d]) => t('settings.deviceEntry', {
+          name: d.name || id,
+          self: id === state.deviceId ? t('settings.thisDevice') : '',
+          count: Object.keys(d.stats || {}).length,
+        })).join(', '),
+      }))),
     available(PRIMARY_LANG) && h('div', { class: 'card' },
-      h('h2', {}, 'Question languages'),
-      h('p', { class: 'muted' }, 'Each question can be switched between 中文 and a second language. Both are downloaded for offline use.'),
-      h('label', { for: 'second-lang' }, 'Second language'),
+      h('h2', {}, t('settings.questionLanguages')),
+      h('p', { class: 'muted' }, t('settings.questionLanguagesHelp')),
+      h('label', { for: 'second-lang' }, t('settings.secondLanguage')),
       h('select', {
         id: 'second-lang',
         onchange: async e => {
           const code = e.target.value;
           if (!(await loadText(code))) {
-            alert('Could not download ' + langLabel(code) + '. Check your connection and try again.');
+            alert(t('settings.downloadFailed', { language: langName(code) }));
             e.target.value = secondLang();
             return;
           }
@@ -597,60 +684,60 @@ function settingsView() {
           saveSettings();
         },
       }, state.languages.filter(l => l.code !== PRIMARY_LANG).map(l =>
-        h('option', { value: l.code, selected: l.code === secondLang() }, l.name)))),
+        h('option', { value: l.code, selected: l.code === secondLang() }, langName(l.code))))),
     h('div', { class: 'card' },
-      h('h2', {}, 'Data'),
-      h('p', { class: 'muted' }, state.questions.length + ' questions in the bank. Each language comes from its own edition of the ',
-        h('a', { href: 'https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823', target: '_blank', rel: 'noopener' }, 'Highway Bureau question bank'),
-        ', and editions are not always updated at the same time.'),
+      h('h2', {}, t('settings.data')),
+      h('p', { class: 'muted' }, t('settings.dataHelpBefore', { count: state.questions.length }),
+        h('a', { href: 'https://www.thb.gov.tw/News_Download.aspx?n=284&sms=12823', target: '_blank', rel: 'noopener' }, t('settings.dataHelpLink')),
+        t('settings.dataHelpAfter')),
       h('table', { class: 'editions' }, [...state.languages].sort((a, b) => (b.code === PRIMARY_LANG) - (a.code === PRIMARY_LANG)).map(l => h('tr', {},
-        h('th', {}, l.name),
-        h('td', {}, l.edition || 'unknown edition', l.date && h('div', { class: 'muted' }, l.date)),
-        h('td', { class: 'muted' }, (l.questions || 0) + ' questions')))),
+        h('th', {}, langName(l.code)),
+        h('td', {}, l.edition || t('settings.unknownEdition'), l.date && h('div', { class: 'muted' }, l.date)),
+        h('td', { class: 'muted' }, t('settings.questionCount', { count: l.questions || 0 }))))),
       h('div', { class: 'actions' },
         h('button', {
           class: 'btn',
           onclick: () => {
-            if (!confirm('Reset the stats recorded on this device? Other devices keep theirs.')) return;
+            if (!confirm(t('settings.resetConfirm'))) return;
             state.myStats = {};
             store.set('myStats', {});
             sync.run();
             homeView();
           },
-        }, 'Reset this device'))),
+        }, t('settings.reset')))),
     h('div', { class: 'card' },
-      h('h2', {}, 'Support'),
-      h('p', { class: 'muted' }, 'Found a wrong answer, a typo or a bug, or have an idea? Let us know on GitHub. A free GitHub account is needed to post.'),
-      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, 'Get support')));
+      h('h2', {}, t('settings.support')),
+      h('p', { class: 'muted' }, t('settings.supportHelp')),
+      h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport'))));
 }
 
 function codeSettings(status, syncNow) {
   const code = state.settings.syncCode;
   if (code) {
     const pretty = formatCode(code);
-    const shareText = 'Car Exam sync code: ' + pretty + '\nOpen ' + location.origin + location.pathname + ' → ⚙️ → Sync code → Use an existing code.';
+    const shareText = t('code.share', { code: pretty, url: location.origin + location.pathname });
     return h('div', {},
-      h('p', { class: 'muted' }, 'Enter this code on your other devices. Anyone with the code can see and change these stats, so keep it private.'),
+      h('p', { class: 'muted' }, t('code.help')),
       h('div', { class: 'sync-code', id: 'sync-code' }, pretty),
       h('div', { class: 'actions' },
         h('button', {
           class: 'btn',
           onclick: async e => {
-            try { await navigator.clipboard.writeText(pretty); e.target.textContent = 'Copied'; } catch (err) { /* clipboard unavailable */ }
+            try { await navigator.clipboard.writeText(pretty); e.target.textContent = t('code.copied'); } catch (err) { /* clipboard unavailable */ }
           },
-        }, 'Copy'),
+        }, t('code.copy')),
         navigator.share && h('button', {
           class: 'btn',
           onclick: () => navigator.share({ text: shareText }).catch(() => {}),
-        }, 'Share'),
-        h('button', { class: 'btn primary', onclick: syncNow }, 'Sync now')));
+        }, t('code.shareButton')),
+        h('button', { class: 'btn primary', onclick: syncNow }, t('code.syncNow'))));
   }
   const input = h('input', {
     type: 'text', id: 'code-input', placeholder: 'XXXX-XXXX-XXXX', class: 'mono',
     autocomplete: 'off', autocapitalize: 'characters', autocorrect: 'off', spellcheck: 'false',
   });
   return h('div', {},
-    h('p', { class: 'muted' }, 'First device: create a code. Other devices: enter the same code.'),
+    h('p', { class: 'muted' }, t('code.intro')),
     h('div', { class: 'actions' },
       h('button', {
         class: 'btn primary',
@@ -658,19 +745,19 @@ function codeSettings(status, syncNow) {
           sync.configure({ syncCode: newSyncCode() });
           await syncNow();
         },
-      }, 'Create a new code')),
-    h('label', { for: 'code-input' }, 'Use an existing code'),
+      }, t('code.create'))),
+    h('label', { for: 'code-input' }, t('code.existing')),
     input,
     h('div', { class: 'actions' },
       h('button', {
         class: 'btn',
         onclick: async () => {
           const value = normaliseCode(input.value);
-          if (!value) { status.textContent = 'That does not look like a sync code: it has 12 letters and digits, like ABCD-EFGH-JKMN.'; return; }
+          if (!value) { status.textContent = t('code.invalid'); return; }
           sync.configure({ syncCode: value });
           await syncNow();
         },
-      }, 'Link this device')));
+      }, t('code.link'))));
 }
 
 function gistSettings() {
@@ -680,9 +767,8 @@ function gistSettings() {
     autocomplete: 'off', autocapitalize: 'off', autocorrect: 'off', spellcheck: 'false', class: 'mono',
   });
   return h('div', {},
-    h('p', { class: 'muted' },
-      'Stats are stored in a private GitHub Gist. Create a fine-grained token at github.com/settings/personal-access-tokens with only "Gists: Read and write" permission, and paste the same token on each device.'),
-    h('label', { for: 'token' }, 'GitHub token'), token,
+    h('p', { class: 'muted' }, t('gist.help')),
+    h('label', { for: 'token' }, t('gist.token')), token,
     h('div', { class: 'actions' },
       h('button', {
         class: 'btn primary',
@@ -694,7 +780,7 @@ function gistSettings() {
           if (problem && /failed/.test(sync.lastMessage)) sync.lastMessage += ' ' + problem;
           if (state.view === 'settings') settingsView();
         },
-      }, 'Save & sync now')));
+      }, t('gist.save'))));
 }
 
 document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () => {
@@ -705,6 +791,11 @@ document.querySelectorAll('.nav').forEach(b => b.addEventListener('click', () =>
 // ---------- boot ----------
 
 async function boot() {
+  await setUiLang(preferredUiLang());
+  if (!state.settings.deviceName) {
+    state.settings.deviceName = defaultDeviceName();
+    saveSettings();
+  }
   try {
     const res = await fetch('data/bank.json');
     if (res.ok) {

@@ -32,7 +32,8 @@ After changing `wrangler.jsonc`, run `npm run types` to regenerate
 | Path | Contents |
 |---|---|
 | `app/index.html`, `app/styles.css` | Page and styles |
-| `app/app.js` | Screens, local storage, question languages and both sync methods |
+| `app/app.js` | Screens, local storage, interface and question languages, and both sync methods |
+| `app/i18n/` | Interface translations, one file per language |
 | `app/core.js` | Stats merging and question selection (also used by the tests) |
 | `app/sw.js` | Service worker that caches the app, question text and all pictures for offline use |
 | `app/data/` | Extracted questions and pictures (see below) |
@@ -69,6 +70,29 @@ entry, so devices never overwrite each other.
 - The app stores the same document in a private gist named `taiwan-car-exam-stats.json`, using
   the GitHub API with the user's token.
 - The token is stored only in the device's `localStorage`.
+
+## Interface translations
+
+- **Where the strings live:** interface text is in `app/i18n/<code>.json`, a flat map of keys
+  to strings with `{name}` placeholders, for example `"sync.synced": "Synced {time}"`.
+- **Using them:** `t(key, vars)` in `app/app.js` returns the string in the current interface
+  language, falling back to English and then to the key itself.
+- **Choosing the language:**
+  - The interface language is chosen in ⚙️, independently of the question languages.
+  - The default comes from the browser's preferred languages: any Chinese locale picks
+    `zh-Hant`, otherwise English.
+- **Section and topic names** follow the interface language when the question bank has them
+  in that language, otherwise English.
+- **Offline:** the service worker precaches the English and Chinese string files.
+- **Tests:** `tests/i18n.test.js` checks that every language file has the same keys and
+  placeholders as `en.json`, and that every key the app uses exists.
+
+To add an interface language:
+1. Copy `app/i18n/en.json` to `app/i18n/<code>.json` and translate the values, keeping the keys
+   and placeholders.
+2. Add the language to `UI_LANGS` in `app/app.js`, with its own name and its locale for
+   formatting times.
+3. Add the file to `SHELL` in `app/sw.js` if it should work offline from the first visit.
 
 ## Question data
 

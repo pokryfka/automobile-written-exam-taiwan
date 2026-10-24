@@ -47,13 +47,18 @@ Pick a mode on the home screen:
 
 ## Languages
 
-Each question and its answers can be shown in **Chinese (中文)** or a **second language**.
+**App language:** the app's buttons and menus are in **English** or **Traditional Chinese
+(繁體中文，台灣)**. It starts in Chinese if your browser prefers Chinese, otherwise in English.
+To change it, go to ⚙️ → **App language · 介面語言**. This setting is separate from the
+language of the questions.
+
+**Question language:** each question and its answers can be shown in **Chinese (中文)** or a
+**second language**.
 Tap **中文 / EN** above the question to switch. The next question opens in the language you
 used last.
 
 - Chinese is always available. The second language is English, and more languages may be
   added later. You choose the second language in ⚙️ → **Question languages**.
-- The app's buttons and menus are in English.
 - The Chinese and English editions of the official bank were published at different times.
   You can see each edition in ⚙️ → **Data**. In the current editions, 4 question numbers
   (#52, #164, #913 and #1036) have different questions in each language, so those 4 are
