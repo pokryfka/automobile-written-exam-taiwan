@@ -1,0 +1,58 @@
+// Cloudflare Worker serving the practice app (static files in app/) and the sync API.
+// Production deploys from main, QA from pull requests; see .github/workflows/deploy.yml.
+// Bindings and vars are not inherited by environments, so each one lists its own.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "car-exam-tw",
+  "main": "worker/src/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  "preview_urls": false,
+  "assets": {
+    "directory": "./app",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "observability": { "enabled": true },
+
+  // Production: https://car-exam-tw.pokryfka.workers.dev
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "car-exam-tw",
+      "database_id": "45a8b2c3-223e-4301-8eef-d5495a6ffa5e",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Requests per minute per client IP to the sync API. namespace_id must be unique in the account.
+  "ratelimits": [
+    { "name": "SYNC_LIMITER", "namespace_id": "1001", "simple": { "limit": 60, "period": 60 } }
+  ],
+  "vars": {
+    "ENVIRONMENT": "production",
+    "MAX_BODY_BYTES": "262144",
+    "MAX_DEVICES_PER_CODE": "10"
+  },
+
+  "env": {
+    // QA: https://car-exam-tw-qa.pokryfka.workers.dev
+    "qa": {
+      "d1_databases": [
+        {
+          "binding": "DB",
+          "database_name": "car-exam-tw-qa",
+          "database_id": "3909ee19-1dc9-4b6f-9e58-eb3ea425f5bb",
+          "migrations_dir": "migrations"
+        }
+      ],
+      "ratelimits": [
+        { "name": "SYNC_LIMITER", "namespace_id": "1002", "simple": { "limit": 60, "period": 60 } }
+      ],
+      "vars": {
+        "ENVIRONMENT": "qa",
+        "MAX_BODY_BYTES": "262144",
+        "MAX_DEVICES_PER_CODE": "10"
+      }
+    }
+  }
+}

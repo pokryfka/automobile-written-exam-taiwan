@@ -1,3 +1,6 @@
 __pycache__/
 *.pdf
 .DS_Store
+node_modules/
+.wrangler/
+.dev.vars
