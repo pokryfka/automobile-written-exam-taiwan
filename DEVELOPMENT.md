@@ -212,4 +212,4 @@ Pull requests from forks run the tests only.
 ## Earlier version
 
 Version 1.0.0 (Gist sync only, hosted on GitHub Pages) is still available at
-https://pokryfka.github.io/automobile-written-exam-taiwan/ but is no longer updated.
+https://pokryfka.github.io/car-exam-tw/ but is no longer updated.

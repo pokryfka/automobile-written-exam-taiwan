@@ -107,7 +107,7 @@ the Highway Bureau (公路局), Ministry of Transportation and Communications, o
 ## Feedback
 
 Found a wrong answer, a typo or a bug? Please
-[open an issue](https://github.com/pokryfka/automobile-written-exam-taiwan/issues).
+[open an issue](https://github.com/pokryfka/car-exam-tw/issues).
 
 ## Disclaimer
 

@@ -3,7 +3,7 @@
 
 const STATS_FILE = 'taiwan-car-exam-stats.json';
 const EXAM_SIZE = 40;
-const SUPPORT_URL = 'https://github.com/pokryfka/automobile-written-exam-taiwan/issues';
+const SUPPORT_URL = 'https://github.com/pokryfka/car-exam-tw/issues';
 const EXAM_PASS = 85;
 const view = document.getElementById('view');
 
