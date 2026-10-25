@@ -207,6 +207,10 @@ The rules are in `EXAM` in `app/app.js`. They follow the Highway Bureau's
 [online practice test](https://www.mvdis.gov.tw/m3-simulator-drv/index): 50 random questions,
 5 of them hazard-perception questions, 2 points each, 85 points to pass.
 
+**Answering:** the mock exam has its own screen (`examView` in `app/app.js`). Answers and
+unsure marks are kept in the session and can be changed until the exam is handed in
+(`submitExam`), which records them in the stats. Practice modes record each answer at once.
+
 **Time limit:**
 - Users choose one of `EXAM_TIME_LIMITS` in ⚙️ → Mock exam (`settings.examMinutes`). The
   default is `OFFICIAL_EXAM_MINUTES` (30).

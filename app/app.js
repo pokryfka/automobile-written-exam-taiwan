@@ -696,13 +696,115 @@ function weakListView() {
 
 function startSession(ids, mode, exam) {
   state.session = { ids, idx: 0, mode, exam, results: [] };
-  const minutes = exam ? state.settings.examMinutes : 0;
+  if (!exam) return questionView();
+  // The mock exam works like the official test: answers can be changed until it is handed in.
+  Object.assign(state.session, { answers: ids.map(() => null), unsure: ids.map(() => false), started: Date.now() });
+  const minutes = state.settings.examMinutes;
   if (minutes) {
-    state.session.started = Date.now();
     state.session.deadline = state.session.started + minutes * 60000;
     startExamClock(state.session);
   }
-  questionView();
+  examView();
+}
+
+// The mock exam screen: move freely between questions, choose or change answers, then hand in
+// all of them once. Nothing is recorded in the stats until then.
+function examView() {
+  state.view = 'exam';
+  const s = state.session;
+  const q = state.byId[s.ids[s.idx]];
+  let lang = shownLang(q, state.settings.questionLang);
+  const go = idx => { s.idx = idx; examView(); };
+
+  const stem = h('p', { class: 'qtext' });
+  const labels = [0, 1, 2].map(() => h('span', {}));
+  const buttons = [0, 1, 2].map(i => h('button', {
+    class: s.answers[s.idx] === i ? 'chosen' : '',
+    'aria-pressed': String(s.answers[s.idx] === i),
+    onclick: () => { s.answers[s.idx] = i; examView(); },
+  }, labels[i], q.optionImages && h('img', { class: 'optimg', src: 'data/' + q.optionImages[i], alt: t('q.option', { n: i + 1 }) })));
+
+  const langs = enabledLangs();
+  const toggle = langs.length > 1 && h('div', { class: 'lang-toggle', role: 'group', 'aria-label': t('q.languageGroup') },
+    langs.map(code => h('button', {
+      'data-lang': code,
+      disabled: !textFor(q, code),
+      title: textFor(q, code) ? '' : t('q.notAvailable', { language: langName(code) }),
+      onclick: () => { state.settings.questionLang = code; prefsChanged(); showText(code); },
+    }, langLabel(code))));
+  function showText(code) {
+    lang = shownLang(q, code);
+    stem.textContent = textFor(q, lang).q;
+    stem.lang = lang;
+    labels.forEach((el, i) => { el.textContent = '(' + (i + 1) + ') ' + textFor(q, lang).options[i]; el.lang = lang; });
+    if (toggle) toggle.querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lang === lang));
+  }
+  showText(lang);
+
+  const answered = s.answers.filter(a => a !== null).length;
+  const grid = h('div', { class: 'exam-grid', role: 'navigation', 'aria-label': t('exam.questions') },
+    s.ids.map((id, i) => h('button', {
+      class: [s.answers[i] === null ? '' : s.unsure[i] ? 'unsure' : 'answered', i === s.idx ? 'current' : ''].join(' ').trim(),
+      'aria-current': i === s.idx ? 'step' : null,
+      'aria-label': t(s.answers[i] === null ? 'exam.cellUnanswered' : s.unsure[i] ? 'exam.cellUnsure' : 'exam.cellAnswered', { n: i + 1 }),
+      onclick: () => go(i),
+    }, String(i + 1))));
+
+  render(h('div', { class: 'card' },
+    h('div', { class: 'qmeta' },
+      h('span', {}, t('exam.position', { n: s.idx + 1, total: s.ids.length }),
+        s.deadline && [' · ', h('span', {
+          id: 'exam-clock',
+          class: 'exam-clock' + (s.deadline - Date.now() <= EXAM_WARN_MINUTES * 60000 ? ' warn' : ''),
+          'aria-label': t('exam.timeLeft'),
+        }, formatDuration(s.deadline - Date.now()))]),
+      toggle),
+    h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
+    (q.images || []).map(src => h('img', { class: 'qimg', src: 'data/' + src, alt: t('q.illustration') })),
+    videoLink(q),
+    stem,
+    h('div', { class: 'options' + (q.optionImages ? ' pics' : '') }, buttons),
+    h('div', { class: 'unsure-row' }, h('button', {
+      class: 'unsure-toggle' + (s.unsure[s.idx] ? ' on' : ''),
+      'aria-pressed': String(s.unsure[s.idx]),
+      onclick: () => { s.unsure[s.idx] = !s.unsure[s.idx]; examView(); },
+    }, t('q.unsure'))),
+    h('div', { class: 'actions' },
+      h('button', { class: 'btn', disabled: s.idx === 0, onclick: () => go(s.idx - 1) }, t('exam.previous')),
+      h('button', { class: 'btn', disabled: s.idx === s.ids.length - 1, onclick: () => go(s.idx + 1) }, t('exam.next')))),
+  h('div', { class: 'card' },
+    h('div', { class: 'exam-legend muted' },
+      h('span', {}, t('exam.answeredCount', { count: answered, total: s.ids.length })),
+      h('span', { class: 'key answered' }, t('exam.keyAnswered')),
+      h('span', { class: 'key unsure' }, t('exam.keyUnsure')),
+      h('span', { class: 'key' }, t('exam.keyUnanswered'))),
+    grid,
+    h('div', { class: 'actions' },
+      h('button', {
+        class: 'btn primary',
+        onclick: () => {
+          const left = s.ids.length - answered;
+          if (left && !confirm(t('exam.confirmFinish', { count: left }))) return;
+          submitExam(s);
+        },
+      }, t('exam.finish')))));
+  window.scrollTo(0, 0);
+}
+
+// Hand in the mock exam: record every answered question in the stats, then show the result.
+function submitExam(s) {
+  const now = Date.now();
+  s.finished = now;
+  s.results = [];
+  s.ids.forEach((id, i) => {
+    if (s.answers[i] === null) return;
+    const correct = s.answers[i] === state.byId[id].answer;
+    Core.recordAnswer(state.myStats, id, correct, now, s.unsure[i]);
+    s.results.push({ id, correct });
+  });
+  store.set('myStats', state.myStats);
+  sync.soon();
+  resultView();
 }
 
 // ---------- mock exam time limit ----------
@@ -721,14 +823,14 @@ function startExamClock(s) {
 }
 
 function tickExam(s) {
-  if (state.session !== s || state.view !== 'question') {
+  if (state.session !== s || state.view !== 'exam') {
     if (state.session !== s) clearInterval(examClock);
     return;
   }
   const left = s.deadline - Date.now();
   if (left <= 0) {
     s.timedOut = true;
-    resultView();
+    submitExam(s);
     return;
   }
   const warn = left <= EXAM_WARN_MINUTES * 60000;
@@ -832,8 +934,6 @@ function questionView() {
     store.set('myStats', state.myStats);
     sync.soon();
     s.results.push({ id: q.id, correct });
-
-    if (s.exam) return next();
     showAnswer(value);
   }
 
@@ -859,12 +959,7 @@ function questionView() {
   showText(lang);
   render(h('div', { class: 'card' },
     h('div', { class: 'qmeta' },
-      h('span', {}, (s.idx + 1) + ' / ' + s.ids.length,
-        s.deadline && [' · ', h('span', {
-          id: 'exam-clock',
-          class: 'exam-clock' + (s.deadline - Date.now() <= EXAM_WARN_MINUTES * 60000 ? ' warn' : ''),
-          'aria-label': t('exam.timeLeft'),
-        }, formatDuration(s.deadline - Date.now()))]),
+      h('span', {}, (s.idx + 1) + ' / ' + s.ids.length),
       toggle,
       h('span', {}, r ? statLabel(r) : t('q.new'))),
     h('div', { class: 'muted', style: 'margin-bottom:6px' }, questionLabel(q)),
@@ -892,7 +987,7 @@ function resultView() {
     h('div', { class: 'result-score ' + (s.exam ? (score >= EXAM.pass ? 'pass' : 'fail') : '') }, s.exam ? score : right + ' / ' + total),
     s.exam && h('p', { style: 'text-align:center' }, score >= EXAM.pass ? t('result.pass') : t('result.fail', { pass: EXAM.pass })),
     s.timedOut && h('p', { class: 'muted', style: 'text-align:center' }, t('result.timeUp', { count: unanswered })),
-    s.deadline && !s.timedOut && h('p', { class: 'muted', style: 'text-align:center' }, t('result.timeTaken', { time: formatDuration(Date.now() - s.started) })),
+    s.deadline && !s.timedOut && h('p', { class: 'muted', style: 'text-align:center' }, t('result.timeTaken', { time: formatDuration(s.finished - s.started) })),
     wrongIds.length > 0 && h('table', { class: 'weak' }, wrongIds.map(id => {
       const q = state.byId[id];
       const text = qText(q);
