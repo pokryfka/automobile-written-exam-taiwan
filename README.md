@@ -31,7 +31,7 @@ Pick a mode on the home screen:
 | 🔥 **Mistakes** | Only questions you got wrong or were unsure about, and haven't mastered yet |
 | 🆕 **New** | Questions you have never answered |
 | 🎲 **Random** | Any question |
-| 📝 **Mock exam** | 50 random questions, like the real test: 45 written and 5 hazard-perception questions, 2 points each, 85 points to pass |
+| 📝 **Mock exam** | 50 random questions, like the real test: 45 written and 5 hazard-perception questions, 2 points each, 85 points to pass, 30 minutes |
 | 📊 **Weak list** | Your 50 weakest questions, with a button to practise them |
 
 - After each answer you see whether you were right, and the correct answer is highlighted.
@@ -44,6 +44,9 @@ Pick a mode on the home screen:
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
 - Choose how many questions a session has: 10, 20, 40 or 80.
+- The mock exam has a **time limit**, 30 minutes like the official test. You can change it to 10
+  or 20 minutes, or turn it off, in ⚙️ → **Mock exam**. A warning shows when 5 minutes are left.
+  When the time is up, the exam ends and unanswered questions count as wrong.
 
 **Official practice test:** the Highway Bureau also runs its own online practice tests for cars
 and motorcycles, [交通部公路局汽機車線上隨機模擬考系統](https://www.mvdis.gov.tw/m3-simulator-drv/index).

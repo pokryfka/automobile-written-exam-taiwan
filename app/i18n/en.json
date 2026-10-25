@@ -40,6 +40,7 @@
   "home.randomHint": "Any question",
   "home.exam": "📝 Mock exam",
   "home.examHint": "{size} questions, pass {pass}",
+  "home.examHintTimed": "{size} questions, pass {pass}, {minutes} min",
   "home.weakList": "📊 Weak list",
   "home.weakListHint": "Your top mistakes",
   "home.length": "Questions per session",
@@ -71,6 +72,8 @@
   "q.wrong": "✗ Wrong: answer is {answer}",
   "q.next": "Next →",
   "q.finish": "Finish",
+  "exam.timeLeft": "Time left",
+  "exam.timeWarning": "{minutes} minutes left",
 
   "result.examTitle": "Mock exam result",
   "result.sessionTitle": "Session done",
@@ -80,6 +83,8 @@
   "result.correctOption": "Correct option",
   "result.retry": "Retry mistakes",
   "result.home": "Home",
+  "result.timeTaken": "Finished in {time}",
+  "result.timeUp": "Time's up: {count} questions not answered, counted as wrong.",
 
   "settings.appLanguage": "App language · 介面語言",
 
@@ -97,6 +102,12 @@
   "settings.questionLanguages": "Question languages",
   "settings.questionLanguagesHelp": "Each question can be switched between 中文 and a second language. Both are downloaded for offline use.",
   "settings.secondLanguage": "Second language",
+  "settings.exam": "Mock exam",
+  "settings.examTime": "Time limit",
+  "settings.examTimeOff": "Off",
+  "settings.examTimeMinutes": "{n} minutes",
+  "settings.examTimeOfficial": "{n} minutes (as in the official test)",
+  "settings.examTimeHelp": "The official test has a {minutes}-minute time limit. When the time is up, the mock exam ends and unanswered questions count as wrong. A warning shows when 5 minutes are left.",
   "settings.downloadFailed": "Could not download {language}. Check your connection and try again.",
 
   "settings.data": "Data",
