@@ -44,6 +44,10 @@ Pick a mode on the home screen:
 - Use the **Section** and **Topic** filters to focus on one part of the bank. They apply to
   the practice modes but not to the mock exam.
 - Choose how many questions a session has: 10, 20, 40 or 80.
+- The **mock exam** works like the official test: move between questions with **Previous** and
+  **Next** or by tapping a question number, and change your answers until you tap **Finish
+  exam**. The numbers show which questions you've answered, and which you marked unsure. Your
+  answers are checked and saved when you finish.
 - The mock exam has a **time limit**, 30 minutes like the official test. You can change it to 10
   or 20 minutes, or turn it off, in ⚙️ → **Mock exam**. A warning shows when 5 minutes are left.
   When the time is up, the exam ends and unanswered questions count as wrong.
