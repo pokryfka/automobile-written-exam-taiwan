@@ -61,6 +61,12 @@ includes 5 questions about a short driving video. They're in the app as their ow
 **Hazard Perception Videos**. Each one has a **Watch the video** link to the Highway Bureau's
 video. Most can be answered from the text alone.
 
+### Text size
+
+To make the text bigger, tap the **A A A** button in the top bar, between the flag and ⚙️, and
+choose **Standard**, **Large** or **Extra large**. The highlighted A shows the current size. The
+page changes size straight away, and each device remembers its own choice.
+
 ### Keyboard shortcuts
 
 On a computer, or a tablet with a keyboard, you can use the keyboard instead of tapping. The

@@ -99,6 +99,16 @@ To use it:
 3. In the app, choose **GitHub Gist**, paste the token, and tap **Save & sync now**.
 4. Paste the same token on your other devices. They find the same gist automatically.
 
+## Text size
+
+- **How it works:** the text size menu (`TEXT_SIZES` in `app/app.js`) sets `data-text-size` on
+  `<html>`, which changes the root font size (100%, 112.5% or 125%) in `app/styles.css`.
+- **Writing styles:** font sizes in the stylesheet are in `rem`, so they all follow the setting
+  without redrawing the page. Use `rem` for new text too. Only the top bar keeps `px`, so it
+  doesn't grow.
+- **Storage:** the choice is stored per device in `settings.textSize` and isn't synced.
+- **Menus:** the text size and language menus share `topMenu()`.
+
 ## Keyboard shortcuts
 
 - **Registering keys:** each screen calls `setKeys()` in `app/app.js` after rendering, with its

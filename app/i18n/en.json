@@ -7,6 +7,11 @@
   "nav.settings": "Settings",
   "sync.statusLabel": "Sync status",
 
+  "textSize.label": "Text size",
+  "textSize.standard": "Standard",
+  "textSize.large": "Large",
+  "textSize.larger": "Extra large",
+
   "device.computer": "Computer",
   "device.phone": "Phone",
   "device.tablet": "Tablet",
