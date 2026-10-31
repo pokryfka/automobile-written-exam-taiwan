@@ -585,6 +585,7 @@ function h(tag, attrs, ...children) {
 }
 
 function render(...nodes) {
+  keyboard.bindings = [];
   view.replaceChildren(...nodes.filter(n => n != null && n !== false));
   liveNodes = liveNodes.filter(e => e.node.isConnected);
   window.scrollTo(0, 0);
@@ -594,6 +595,88 @@ function questionLabel(q) {
   if (q.hazard) return live(() => bankName('sections', 'hazard') + ' #' + q.no);
   return live(() => '#' + q.no + (q.also ? ' (' + tr('question.also', { numbers: q.also.join(', #') }) + ')' : '')
     + (q.topic ? ' · ' + bankName('topics', q.topic).replace(/\s*[(（].*[)）]$/, '') : ''));
+}
+
+// ---------- keyboard ----------
+// Each screen registers its shortcuts with setKeys(); they press the screen's own buttons, so a
+// key does exactly what tapping does. Hints are shown only when a keyboard seems to be there:
+// a fine pointer with hover (a computer), or once a key has been pressed (a tablet keyboard).
+
+const keyboard = { used: false, bindings: [] };
+const finePointer = window.matchMedia('(any-hover: hover) and (any-pointer: fine)');
+
+function updateKeyboardClass() {
+  document.body.classList.toggle('kbd', keyboard.used || finePointer.matches);
+}
+
+function press(el) {
+  if (el && !el.disabled) el.click();
+}
+
+function kbd(text) {
+  return h('kbd', {}, text);
+}
+
+// bindings: [{ keys: ['1', '2'], show: '1–2', label: 'keys.answer', run(key), when() }]
+// Letter keys are given in lower case. Adds the hint line for this screen at the end of the view.
+function setKeys(bindings) {
+  keyboard.bindings = bindings.filter(b => !b.when || b.when());
+  view.append(h('p', { class: 'key-hints kbd-only' },
+    keyboard.bindings.flatMap(b => [kbd(b.show), ' ', t(b.label), ' · ']),
+    kbd('?'), ' ', t('keys.all')));
+}
+
+function toggleKeyHelp() {
+  const open = document.querySelector('.key-overlay');
+  if (open) return open.remove();
+  const rows = keyboard.bindings.map(b => [b.show, b.label]).concat([['?', 'keys.help'], ['Esc', 'keys.close']]);
+  const overlay = h('div', { class: 'key-overlay', role: 'dialog', 'aria-modal': 'true', 'aria-label': t('keys.title'),
+    onclick: e => { if (e.target === overlay) overlay.remove(); } },
+  h('div', { class: 'card' },
+    h('h2', {}, t('keys.title')),
+    h('table', { class: 'keys' }, rows.map(([show, label]) => h('tr', {}, h('th', {}, kbd(show)), h('td', {}, t(label)))))));
+  document.body.append(overlay);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.ctrlKey || e.metaKey || e.altKey) return;
+  if (e.target.closest('input, select, textarea')) return;
+  if (!keyboard.used) {
+    keyboard.used = true;
+    updateKeyboardClass();
+  }
+  if (e.key === '?') {
+    e.preventDefault();
+    toggleKeyHelp();
+    return;
+  }
+  const overlay = document.querySelector('.key-overlay');
+  if (overlay) {
+    if (e.key === 'Escape') overlay.remove();
+    return;
+  }
+  // Enter and Space already press a focused button or link.
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('button, a')) return;
+  const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+  const binding = keyboard.bindings.find(b => b.keys.includes(key));
+  if (!binding || (e.repeat && !binding.repeat)) return;
+  e.preventDefault();
+  binding.run(key);
+});
+
+finePointer.addEventListener('change', updateKeyboardClass);
+
+function goHome() {
+  state.session = null;
+  homeView();
+}
+
+// The question language key switches to the other enabled language, like the 中文 / EN toggle.
+function languageKey(toggle) {
+  return {
+    keys: ['l'], show: 'L', label: 'keys.language', when: () => !!toggle,
+    run: () => press([...toggle.querySelectorAll('button')].find(b => !b.classList.contains('on'))),
+  };
 }
 
 // ---------- views ----------
@@ -636,16 +719,16 @@ function homeView() {
     h('div', { class: 'card' },
       h('h2', {}, t('home.practice')),
       h('div', { class: 'modes' },
-        h('button', { onclick: start('smart') }, h('b', {}, t('home.smart')), h('small', {}, t('home.smartHint'))),
-        h('button', { onclick: start('weak') }, h('b', {}, t('home.weak')), h('small', {}, t('home.weakHint'))),
-        h('button', { onclick: start('unseen') }, h('b', {}, t('home.unseen')), h('small', {}, t('home.unseenHint'))),
-        h('button', { onclick: start('random') }, h('b', {}, t('home.random')), h('small', {}, t('home.randomHint'))),
+        h('button', { onclick: start('smart') }, h('b', {}, t('home.smart')), h('small', {}, t('home.smartHint')), modeKey(1)),
+        h('button', { onclick: start('weak') }, h('b', {}, t('home.weak')), h('small', {}, t('home.weakHint')), modeKey(2)),
+        h('button', { onclick: start('unseen') }, h('b', {}, t('home.unseen')), h('small', {}, t('home.unseenHint')), modeKey(3)),
+        h('button', { onclick: start('random') }, h('b', {}, t('home.random')), h('small', {}, t('home.randomHint')), modeKey(4)),
         h('button', {
           onclick: () => startSession(Core.pickExam(state.questions, EXAM).map(q => q.id), 'exam', true),
         }, h('b', {}, t('home.exam')), h('small', {}, state.settings.examMinutes
           ? t('home.examHintTimed', { size: EXAM.size, pass: EXAM.pass, minutes: state.settings.examMinutes })
-          : t('home.examHint', { size: EXAM.size, pass: EXAM.pass }))),
-        h('button', { onclick: weakListView }, h('b', {}, t('home.weakList')), h('small', {}, t('home.weakListHint')))),
+          : t('home.examHint', { size: EXAM.size, pass: EXAM.pass })), modeKey(5)),
+        h('button', { onclick: weakListView }, h('b', {}, t('home.weakList')), h('small', {}, t('home.weakListHint')), modeKey(6))),
       h('label', { for: 'len' }, t('home.length')),
       h('select', {
         id: 'len',
@@ -671,6 +754,12 @@ function homeView() {
     !sync.backend() && h('div', { class: 'card' },
       h('p', { class: 'muted' }, t('home.noSync'))),
   );
+  const modeButtons = [...view.querySelectorAll('.modes button')];
+  setKeys([{ keys: ['1', '2', '3', '4', '5', '6'], show: '1–6', label: 'keys.mode', run: key => press(modeButtons[key - 1]) }]);
+}
+
+function modeKey(n) {
+  return h('kbd', { class: 'kbd-only mode-key' }, String(n));
 }
 
 function weakListView() {
@@ -692,6 +781,10 @@ function weakListView() {
           h('td', { class: 'num' }, statLabel(r))))),
       ]
       : h('p', { class: 'muted' }, t('weak.none'))));
+  setKeys([
+    { keys: ['Enter'], show: 'Enter', label: 'keys.practice', when: () => rows.length > 0, run: () => press(view.querySelector('.btn.primary')) },
+    { keys: ['Escape'], show: 'Esc', label: 'keys.home', run: goHome },
+  ]);
 }
 
 function startSession(ids, mode, exam) {
@@ -788,6 +881,22 @@ function examView() {
           submitExam(s);
         },
       }, t('exam.finish')))));
+  const [prev, next] = view.querySelectorAll('.card:first-child .actions button');
+  setKeys([
+    { keys: ['1', '2', '3'], show: '1–3', label: 'keys.answer', run: key => press(buttons[key - 1]) },
+    { keys: ['u'], show: 'U', label: 'keys.unsure', run: () => press(view.querySelector('.unsure-toggle')) },
+    languageKey(toggle),
+    { keys: ['ArrowLeft', 'ArrowRight'], show: '← →', label: 'keys.prevNext', repeat: true, run: key => press(key === 'ArrowLeft' ? prev : next) },
+    {
+      keys: ['n'], show: 'N', label: 'keys.nextUnanswered',
+      run: () => {
+        const order = s.ids.map((_, i) => (s.idx + 1 + i) % s.ids.length);
+        const i = order.find(j => s.answers[j] === null);
+        if (i !== undefined) go(i);
+      },
+    },
+    { keys: ['f'], show: 'F', label: 'keys.finish', run: () => press(view.querySelector('.btn.primary')) },
+  ]);
   window.scrollTo(0, 0);
 }
 
@@ -970,6 +1079,13 @@ function questionView() {
     h('div', { class: 'unsure-row' }, unsureButton),
     feedback,
     actions));
+  setKeys([
+    { keys: ['1', '2', '3'], show: '1–3', label: 'keys.answer', run: key => press(buttons[key - 1]) },
+    { keys: ['u'], show: 'U', label: 'keys.unsure', run: () => press(unsureButton) },
+    languageKey(toggle),
+    { keys: ['Enter', 'ArrowRight', ' '], show: 'Enter', label: 'keys.next', run: () => press(actions.querySelector('button')) },
+    { keys: ['Escape'], show: 'Esc', label: 'keys.home', run: goHome },
+  ]);
 }
 
 function resultView() {
@@ -1002,6 +1118,11 @@ function resultView() {
     h('div', { class: 'actions' },
       wrongIds.length > 0 && h('button', { class: 'btn', onclick: () => startSession(Core.shuffle(wrongIds, Math.random), 'retry', false) }, t('result.retry')),
       h('button', { class: 'btn primary', onclick: homeView }, t('result.home')))));
+  const retry = wrongIds.length > 0 && view.querySelector('.actions .btn:not(.primary)');
+  setKeys([
+    { keys: ['Enter', 'Escape'], show: 'Enter', label: 'keys.home', run: goHome },
+    { keys: ['r'], show: 'R', label: 'keys.retry', when: () => !!retry, run: () => press(retry) },
+  ]);
 }
 
 // Fine-grained tokens are "github_pat_" + 82 characters, classic ones "ghp_" + 36. Only used as a hint after a failed sync.
@@ -1114,6 +1235,7 @@ function settingsView() {
       h('p', { class: 'muted' }, t('settings.supportHelp')),
       h('a', { class: 'btn link-btn', href: SUPPORT_URL, target: '_blank', rel: 'noopener' }, t('settings.getSupport')),
       versionLine()));
+  setKeys([{ keys: ['Escape'], show: 'Esc', label: 'keys.home', run: goHome }]);
 }
 
 function codeSettings(status, syncNow) {
@@ -1228,6 +1350,7 @@ async function loadVersion() {
 }
 
 async function boot() {
+  updateKeyboardClass();
   await Promise.all([setUiLang(preferredUiLang()), loadConfig(), loadVersion()]);
   if (!state.settings.deviceName) {
     state.settings.deviceName = defaultDeviceName();

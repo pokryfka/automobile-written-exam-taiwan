@@ -99,6 +99,19 @@ To use it:
 3. In the app, choose **GitHub Gist**, paste the token, and tap **Save & sync now**.
 4. Paste the same token on your other devices. They find the same gist automatically.
 
+## Keyboard shortcuts
+
+- **Registering keys:** each screen calls `setKeys()` in `app/app.js` after rendering, with its
+  bindings: keys, a label key from `app/i18n/`, and an action. The actions press the screen's own
+  buttons, so a key does exactly what tapping does.
+- **Hints:** `setKeys()` also adds the hint line at the end of the screen, and **?** opens the full
+  list. `render()` clears the previous screen's bindings.
+- **When hints are shown:** only when a keyboard seems to be there.
+  - On computers: the `(any-hover: hover) and (any-pointer: fine)` media query matches.
+  - On tablets with a keyboard: once any key has been pressed outside a text field.
+  - Either way the body gets the class `kbd`, and elements with `kbd-only` appear.
+- **Keys ignored:** when typing in a field, and when Ctrl, Alt or ⌘ is held.
+
 ## Interface translations
 
 - **Where the strings live:** interface text is in `app/i18n/<code>.json`, a flat map of keys
