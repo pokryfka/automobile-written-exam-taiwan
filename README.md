@@ -69,8 +69,8 @@ keys for the current screen are listed at the bottom, and **?** shows them all.
 | Screen | Keys |
 |---|---|
 | Home | **1**–**6** start a mode |
-| Practice | **1**–**3** answer · **U** unsure · **L** question language · **Enter** next question · **Esc** home |
-| Mock exam | **1**–**3** answer · **U** unsure · **L** question language · **←** **→** previous / next question · **N** next unanswered question · **F** finish exam |
+| Practice | **1**–**3** answer · **/** unsure · **L** question language · **Space** next question · **Esc** home |
+| Mock exam | **1**–**3** answer · **/** unsure · **L** question language · **←** **→** previous / next question · **N** next unanswered question · **F** finish exam |
 | Result | **Enter** home · **R** retry mistakes |
 | Weak list | **Enter** practise these · **Esc** home |
 | Settings | **Esc** home |

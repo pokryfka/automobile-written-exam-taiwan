@@ -655,8 +655,9 @@ document.addEventListener('keydown', e => {
     if (e.key === 'Escape') overlay.remove();
     return;
   }
-  // Enter and Space already press a focused button or link.
-  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('button, a')) return;
+  // Enter and Space already press a focused button or link (a disabled one, like an answered
+  // option, does nothing, so the screen's shortcut applies).
+  if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('button:not(:disabled), a')) return;
   const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
   const binding = keyboard.bindings.find(b => b.keys.includes(key));
   if (!binding || (e.repeat && !binding.repeat)) return;
@@ -884,7 +885,7 @@ function examView() {
   const [prev, next] = view.querySelectorAll('.card:first-child .actions button');
   setKeys([
     { keys: ['1', '2', '3'], show: '1–3', label: 'keys.answer', run: key => press(buttons[key - 1]) },
-    { keys: ['u'], show: 'U', label: 'keys.unsure', run: () => press(view.querySelector('.unsure-toggle')) },
+    { keys: ['/'], show: '/', label: 'keys.unsure', run: () => press(view.querySelector('.unsure-toggle')) },
     languageKey(toggle),
     { keys: ['ArrowLeft', 'ArrowRight'], show: '← →', label: 'keys.prevNext', repeat: true, run: key => press(key === 'ArrowLeft' ? prev : next) },
     {
@@ -1081,9 +1082,9 @@ function questionView() {
     actions));
   setKeys([
     { keys: ['1', '2', '3'], show: '1–3', label: 'keys.answer', run: key => press(buttons[key - 1]) },
-    { keys: ['u'], show: 'U', label: 'keys.unsure', run: () => press(unsureButton) },
+    { keys: ['/'], show: '/', label: 'keys.unsure', run: () => press(unsureButton) },
     languageKey(toggle),
-    { keys: ['Enter', 'ArrowRight', ' '], show: 'Enter', label: 'keys.next', run: () => press(actions.querySelector('button')) },
+    { keys: [' ', 'ArrowRight'], show: 'Space', label: 'keys.next', run: () => press(actions.querySelector('button')) },
     { keys: ['Escape'], show: 'Esc', label: 'keys.home', run: goHome },
   ]);
 }
