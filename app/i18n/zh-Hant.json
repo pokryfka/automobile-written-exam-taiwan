@@ -7,6 +7,11 @@
   "nav.settings": "設定",
   "sync.statusLabel": "同步狀態",
 
+  "textSize.label": "文字大小",
+  "textSize.standard": "標準",
+  "textSize.large": "大",
+  "textSize.larger": "特大",
+
   "device.computer": "電腦",
   "device.phone": "手機",
   "device.tablet": "平板",

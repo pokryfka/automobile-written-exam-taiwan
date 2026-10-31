@@ -48,6 +48,7 @@ const state = {
   settings: Object.assign({
     syncMode: '', syncCode: '', token: '', gistId: '', deviceName: '', section: '', topic: '', length: 20,
     examMinutes: OFFICIAL_EXAM_MINUTES, // mock exam time limit, 0 for none
+    textSize: 'standard', // one of TEXT_SIZES, this device only
     uiLang: 'en', // interface language
     secondLang: 'en', // language offered next to Chinese on each question
     questionLang: 'en', // language the next question opens in
@@ -184,34 +185,64 @@ async function setUiLang(code) {
   const button = document.getElementById('lang-btn');
   button.replaceChildren(flagIcon(current.flag));
   button.setAttribute('aria-label', tr('settings.appLanguage') + ': ' + current.name);
+  setTextSize(state.settings.textSize);
   refreshLive();
   return true;
 }
 
-// Language menu in the top bar: the current language's flag opens a list of all of them.
-const langMenu = {
-  button: document.getElementById('lang-btn'),
-  menu: document.getElementById('lang-menu'),
-  open() {
-    this.menu.replaceChildren(...UI_LANGS.map(l => h('button', {
-      role: 'menuitemradio',
-      'aria-checked': String(l.code === ui.lang),
-      lang: l.locale,
-      onclick: () => this.choose(l.code),
-    }, flagIcon(l.flag), h('span', { class: 'name' }, l.name), h('span', { class: 'check' }, l.code === ui.lang ? '✓' : ''))));
-    this.menu.hidden = false;
-    this.button.setAttribute('aria-expanded', 'true');
-    (this.menu.querySelector('[aria-checked="true"]') || this.menu.firstChild).focus();
-  },
-  close(focusButton) {
-    if (this.menu.hidden) return;
-    this.menu.hidden = true;
-    this.button.setAttribute('aria-expanded', 'false');
-    if (focusButton) this.button.focus();
-  },
+// Top-bar menus: a button showing the current choice opens a list of all of them.
+const topMenus = [];
+
+function topMenu(buttonId, menuId, { items, choose }) {
+  const m = {
+    button: document.getElementById(buttonId),
+    menu: document.getElementById(menuId),
+    open() {
+      topMenus.forEach(other => other !== m && other.close(false));
+      this.menu.replaceChildren(...items().map(item => h('button', {
+        role: 'menuitemradio',
+        'aria-checked': String(item.current),
+        lang: item.lang || null,
+        onclick: () => { this.close(true); if (!item.current) choose(item.value); },
+      }, item.icon, h('span', { class: 'name' }, item.name), h('span', { class: 'check' }, item.current ? '✓' : ''))));
+      this.menu.hidden = false;
+      this.button.setAttribute('aria-expanded', 'true');
+      (this.menu.querySelector('[aria-checked="true"]') || this.menu.firstChild).focus();
+    },
+    close(focusButton) {
+      if (this.menu.hidden) return;
+      this.menu.hidden = true;
+      this.button.setAttribute('aria-expanded', 'false');
+      if (focusButton) this.button.focus();
+    },
+  };
+  m.button.addEventListener('click', e => {
+    e.stopPropagation();
+    if (m.menu.hidden) m.open(); else m.close(false);
+  });
+  topMenus.push(m);
+  return m;
+}
+
+document.addEventListener('click', e => topMenus.forEach(m => { if (!m.menu.contains(e.target)) m.close(false); }));
+document.addEventListener('keydown', e => {
+  const m = topMenus.find(x => !x.menu.hidden);
+  if (!m) return;
+  // An open menu handles its keys; the screen's shortcuts must not see them too.
+  e.stopImmediatePropagation();
+  if (e.key === 'Escape') m.close(true);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const items = [...m.menu.children];
+    const i = items.indexOf(document.activeElement);
+    items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
+  }
+});
+
+// Interface language: the current language's flag.
+topMenu('lang-btn', 'lang-menu', {
+  items: () => UI_LANGS.map(l => ({ value: l.code, current: l.code === ui.lang, lang: l.locale, icon: flagIcon(l.flag), name: l.name })),
   async choose(code) {
-    this.close(true);
-    if (code === ui.lang) return;
     if (!(await setUiLang(code))) {
       alert(t('settings.downloadFailed', { language: UI_LANGS.find(l => l.code === code).name }));
       return;
@@ -219,21 +250,44 @@ const langMenu = {
     state.settings.uiLang = code;
     prefsChanged();
   },
-};
-langMenu.button.addEventListener('click', e => {
-  e.stopPropagation();
-  if (langMenu.menu.hidden) langMenu.open(); else langMenu.close(false);
 });
-document.addEventListener('click', e => { if (!langMenu.menu.contains(e.target)) langMenu.close(false); });
-document.addEventListener('keydown', e => {
-  if (langMenu.menu.hidden) return;
-  if (e.key === 'Escape') langMenu.close(true);
-  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    const items = [...langMenu.menu.children];
-    const i = items.indexOf(document.activeElement);
-    items[(i + (e.key === 'ArrowDown' ? 1 : items.length - 1)) % items.length].focus();
-  }
+
+// Text size: scales all text in the page in place (the stylesheet sizes text in rem). Saved on
+// this device only, since the right size depends on the screen.
+const TEXT_SIZES = [
+  { value: 'standard', label: 'textSize.standard' },
+  { value: 'large', label: 'textSize.large' },
+  { value: 'larger', label: 'textSize.larger' },
+];
+
+// Three letters of growing size, the current one highlighted.
+function textSizeIcon(current) {
+  return h('span', { class: 'text-size-icon', 'aria-hidden': 'true' },
+    TEXT_SIZES.map(size => h('span', { class: size.value === current ? 'on' : '' }, 'A')));
+}
+
+function setTextSize(value) {
+  const size = TEXT_SIZES.find(x => x.value === value) || TEXT_SIZES[0];
+  document.documentElement.dataset.textSize = size.value;
+  const button = document.getElementById('text-size-btn');
+  button.replaceChildren(textSizeIcon(size.value));
+  button.setAttribute('aria-label', String(t('textSize.label')) + ': ' + String(t(size.label)));
+}
+
+document.documentElement.dataset.textSize = state.settings.textSize;
+
+topMenu('text-size-btn', 'text-size-menu', {
+  items: () => TEXT_SIZES.map(size => ({
+    value: size.value,
+    current: size.value === document.documentElement.dataset.textSize,
+    icon: h('span', { class: 'text-size-sample ' + size.value, 'aria-hidden': 'true' }, 'Aa'),
+    name: t(size.label),
+  })),
+  choose(value) {
+    setTextSize(value);
+    state.settings.textSize = value;
+    saveSettings();
+  },
 });
 
 function defaultDeviceName() {
