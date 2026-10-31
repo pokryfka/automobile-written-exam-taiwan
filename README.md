@@ -61,6 +61,22 @@ includes 5 questions about a short driving video. They're in the app as their ow
 **Hazard Perception Videos**. Each one has a **Watch the video** link to the Highway Bureau's
 video. Most can be answered from the text alone.
 
+### Keyboard shortcuts
+
+On a computer, or a tablet with a keyboard, you can use the keyboard instead of tapping. The
+keys for the current screen are listed at the bottom, and **?** shows them all.
+
+| Screen | Keys |
+|---|---|
+| Home | **1**–**6** start a mode |
+| Practice | **1**–**3** answer · **/** unsure · **L** question language · **Space** next question · **Esc** home |
+| Mock exam | **1**–**3** answer · **/** unsure · **L** question language · **←** **→** previous / next question · **N** next unanswered question · **F** finish exam |
+| Result | **Enter** home · **R** retry mistakes |
+| Weak list | **Enter** practise these · **Esc** home |
+| Settings | **Esc** home |
+
+**Esc** doesn't leave a mock exam, so you can't lose one by accident.
+
 ## Languages
 
 **App language:** the app's buttons and menus are in **English** or **Traditional Chinese
